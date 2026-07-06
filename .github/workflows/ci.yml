@@ -6,10 +6,16 @@ on:
     branches: [main]
 
 jobs:
-  docs-baseline:
+  app:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm install
       - name: Verify required documentation exists
         run: |
           set -euo pipefail
@@ -36,3 +42,17 @@ jobs:
             test -s "$file"
           done
           test -d docs/TechnicalDecisions
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Test
+        run: npm run test
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: ci-service-role-key
+          SUPABASE_STORAGE_RESUME_BUCKET: private-resumes

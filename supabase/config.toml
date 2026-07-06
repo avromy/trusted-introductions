@@ -1,0 +1,22 @@
+project_id = "trusted-introductions"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+
+[db]
+port = 54322
+major_version = 15
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/auth"]
+jwt_expiry = 3600
+enable_signup = false
+
+[storage]
+enabled = true
+file_size_limit = "10MiB"
