@@ -14,11 +14,15 @@ export function createClient() {
     {
       cookies: {
         getAll() {
-          return cookieStore.getAll();
+          return cookieStore.getAll().map(({ name, value }) => ({ name, value }));
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
+            cookieStore.set({
+              name,
+              value,
+              ...(options as Record<string, never>),
+            });
           });
         },
       },
