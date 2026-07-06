@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import type { ReactNode } from 'react';
 
 import './globals.css';
 
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
   description: 'Private, invite-only community job help through warm introductions.',
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en" className={inter.variable}>
       <body className="font-sans antialiased">{children}</body>
