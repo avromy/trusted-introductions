@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  docs-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify required documentation exists
+        run: |
+          set -euo pipefail
+          required=(
+            docs/Audit.md
+            docs/PRD.md
+            docs/Architecture.md
+            docs/DatabaseSchema.md
+            docs/API.md
+            docs/EngineeringStandards.md
+            docs/UXPrinciples.md
+            docs/DesignSystem.md
+            docs/Roadmap.md
+            docs/Milestones.md
+            docs/Backlog.md
+            docs/TestingStrategy.md
+            docs/Deployment.md
+            docs/Contributing.md
+            docs/handoffs/EngineeringHandoffTemplate.md
+            .env.example
+            .github/pull_request_template.md
+          )
+          for file in "${required[@]}"; do
+            test -s "$file"
+          done
+          test -d docs/TechnicalDecisions
