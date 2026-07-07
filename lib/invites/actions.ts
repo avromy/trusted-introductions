@@ -12,6 +12,7 @@ import {
   createInvitePayload,
   validateInviteForRedemption,
   type SafeInviteValidationDetails,
+  type SafeInviteValidationResult,
 } from '@/lib/invites/lifecycle';
 import {
   getInviteByTokenHash,
@@ -50,6 +51,8 @@ export type InviteRedemptionSupabaseClient = SupabaseAuthClient &
 export type InviteRevocationSupabaseClient = SupabaseAuthClient &
   AuditEventsSupabaseClient &
   InviteRepositoryClient;
+
+export type InviteValidationSupabaseClient = InviteRepositoryClient;
 
 export type RedeemInviteActionFailureReason =
   | 'invalid-token'
@@ -100,6 +103,13 @@ export type RevokeInviteActionResult =
       message: string;
     };
 
+export type InviteValidationActionResult =
+  | SafeInviteValidationResult
+  | {
+      valid: false;
+      reason: 'missing_token' | 'not_found';
+    };
+
 interface CreateInviteActionDependencies {
   supabase?: InviteCreationSupabaseClient;
   now?: Date;
@@ -107,6 +117,11 @@ interface CreateInviteActionDependencies {
 
 interface RedeemInviteActionDependencies {
   supabase?: InviteRedemptionSupabaseClient;
+  now?: Date;
+}
+
+interface ValidateInviteTokenActionDependencies {
+  supabase?: InviteValidationSupabaseClient;
   now?: Date;
 }
 
@@ -120,6 +135,10 @@ function getRedemptionServerClient(): InviteRedemptionSupabaseClient {
 
 function getServerRevocationClient(): InviteRevocationSupabaseClient {
   return createClient() as unknown as InviteRevocationSupabaseClient;
+}
+
+function getInviteValidationServerClient(): InviteValidationSupabaseClient {
+  return createClient() as unknown as InviteValidationSupabaseClient;
 }
 
 function getIdentityId(identity: AuthIdentity): string {
@@ -219,6 +238,31 @@ export async function createInviteAction(
     plaintextToken: invite.plaintextToken,
     expiresAt: invite.payload.expires_at,
   };
+}
+
+export async function validateInviteTokenAction(
+  token: string | null | undefined,
+  dependencies: ValidateInviteTokenActionDependencies = {},
+): Promise<InviteValidationActionResult> {
+  const normalizedToken = token?.trim();
+
+  if (!normalizedToken) {
+    return { valid: false, reason: 'missing_token' };
+  }
+
+  const supabase = dependencies.supabase ?? getInviteValidationServerClient();
+  const tokenHash = hashInviteToken(normalizedToken);
+  const invite = await getInviteByTokenHash(tokenHash, supabase);
+
+  if (!invite) {
+    return { valid: false, reason: 'not_found' };
+  }
+
+  return validateInviteForRedemption({
+    invite,
+    token: normalizedToken,
+    now: dependencies.now,
+  });
 }
 
 function isAuthRequiredError(error: unknown): boolean {
