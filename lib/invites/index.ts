@@ -22,3 +22,16 @@ export {
   type SafeInviteValidationResult,
   type ValidateInviteInput,
 } from './lifecycle';
+
+export {
+  getInviteByTokenHash,
+  insertInvite,
+  listInvitesByInviterIdentity,
+  updateInviteRedeemed,
+  updateInviteRevoked,
+  type InsertInviteResult,
+  type InvitationRow,
+  type InviteRepositoryClient,
+  type UpdateInviteRedeemedRepositoryInput,
+  type UpdateInviteRevokedRepositoryInput,
+} from './repository';
