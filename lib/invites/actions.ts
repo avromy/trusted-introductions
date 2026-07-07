@@ -3,11 +3,17 @@
 import { createAuditEventPayload } from '@/lib/audit';
 import { insertAuditEvent, type AuditEventsSupabaseClient } from '@/lib/audit/server';
 import {
+  AuthHelperError,
   requireCurrentIdentity,
   type AuthIdentity,
   type SupabaseAuthClient,
 } from '@/lib/auth/session';
-import { createInvitePayload } from '@/lib/invites/lifecycle';
+import {
+  createInvitePayload,
+  markInviteRedeemedPayload,
+  validateInviteForRedemption,
+} from '@/lib/invites/lifecycle';
+import { hashInviteToken } from '@/lib/invites/tokens';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/types/supabase';
 
@@ -136,5 +142,165 @@ export async function createInviteAction(
     inviteId: createdInvite.id,
     plaintextToken: invite.plaintextToken,
     expiresAt: invite.payload.expires_at,
+  };
+}
+
+type InviteRedemptionErrorCode =
+  | 'invalid_token'
+  | 'auth_required'
+  | 'invite_not_found'
+  | 'invite_expired'
+  | 'invite_revoked'
+  | 'invite_redeemed'
+  | 'invite_blocked'
+  | 'invite_token_mismatch'
+  | 'redemption_failed'
+  | 'audit_failed';
+
+export type RedeemInviteActionResult =
+  | {
+      ok: true;
+      invite: {
+        id: string;
+        inviteeEmail: string;
+        communityId: string | null;
+        redeemedAt: string;
+      };
+    }
+  | {
+      ok: false;
+      code: InviteRedemptionErrorCode;
+      message: string;
+    };
+
+type InviteRedemptionSupabaseClient = Parameters<typeof requireCurrentIdentity>[0] &
+  AuditEventsSupabaseClient & {
+    from(table: 'invitations'): {
+      select(columns: string): {
+        eq(column: string, value: string): {
+          maybeSingle(): Promise<{ data: InvitationRow | null; error: { message?: string } | null }>;
+        };
+      };
+      update(payload: ReturnType<typeof markInviteRedeemedPayload>): {
+        eq(column: string, value: string): {
+          eq(column: string, value: string): {
+            is(column: string, value: null): {
+              select(columns: string): {
+                single(): Promise<{ data: InvitationRow | null; error: { message?: string } | null }>;
+              };
+            };
+          };
+        };
+      };
+    };
+  };
+
+const INVITE_SELECT_COLUMNS =
+  'id, invitee_email, inviter_identity_id, community_id, token_hash, status, redemption_status, expires_at, redeemed_at, redeemed_by_identity_id, created_at, updated_at';
+
+function safeRedemptionError(code: InviteRedemptionErrorCode, message: string): RedeemInviteActionResult {
+  return { ok: false, code, message };
+}
+
+function identityIdFrom(identity: Awaited<ReturnType<typeof requireCurrentIdentity>>): string | null {
+  const identityId = identity.identity_id ?? identity.id ?? null;
+  return identityId?.trim() || null;
+}
+
+function validationCode(
+  reason: 'expired' | 'revoked' | 'redeemed' | 'blocked' | 'token_mismatch',
+): InviteRedemptionErrorCode {
+  return `invite_${reason}`;
+}
+
+export async function redeemInviteAction(token: string): Promise<RedeemInviteActionResult> {
+  const trimmedToken = typeof token === 'string' ? token.trim() : '';
+
+  if (!trimmedToken) {
+    return safeRedemptionError('invalid_token', 'A valid invite token is required.');
+  }
+
+  const supabase = createClient() as unknown as InviteRedemptionSupabaseClient;
+  let identityId: string;
+
+  try {
+    const identity = await requireCurrentIdentity(supabase);
+    const currentIdentityId = identityIdFrom(identity);
+
+    if (!currentIdentityId) {
+      return safeRedemptionError('auth_required', 'A signed-in user identity is required.');
+    }
+
+    identityId = currentIdentityId;
+  } catch (error) {
+    if (error instanceof AuthHelperError) {
+      return safeRedemptionError('auth_required', error.message);
+    }
+
+    return safeRedemptionError('auth_required', 'A signed-in user identity is required.');
+  }
+
+  const { data: invite, error: lookupError } = await supabase
+    .from('invitations')
+    .select(INVITE_SELECT_COLUMNS)
+    .eq('token_hash', hashInviteToken(trimmedToken))
+    .maybeSingle();
+
+  if (lookupError) {
+    return safeRedemptionError('redemption_failed', 'Unable to load the invite for redemption.');
+  }
+
+  if (!invite) {
+    return safeRedemptionError('invite_not_found', 'Invite token was not found.');
+  }
+
+  const validation = validateInviteForRedemption({ invite, token: trimmedToken });
+
+  if (!validation.valid) {
+    return safeRedemptionError(validationCode(validation.reason), 'Invite cannot be redeemed.');
+  }
+
+  const redemptionPayload = markInviteRedeemedPayload({ redeemedByIdentityId: identityId });
+  const { data: redeemedInvite, error: redeemError } = await supabase
+    .from('invitations')
+    .update(redemptionPayload)
+    .eq('id', invite.id)
+    .eq('redemption_status', 'not_redeemed')
+    .is('redeemed_at', null)
+    .select(INVITE_SELECT_COLUMNS)
+    .single();
+
+  if (redeemError || !redeemedInvite) {
+    return safeRedemptionError('redemption_failed', 'Invite could not be redeemed.');
+  }
+
+  try {
+    await insertAuditEvent(
+      supabase,
+      createAuditEventPayload({
+        eventType: 'invite.accepted',
+        actor: { type: 'user', id: identityId },
+        target: { type: 'invite', id: redeemedInvite.id },
+        metadata: {
+          communityId: redeemedInvite.community_id,
+          inviteeEmail: redeemedInvite.invitee_email,
+        },
+      }),
+    );
+  } catch {
+    return safeRedemptionError(
+      'audit_failed',
+      'Invite was redeemed, but the audit event could not be written.',
+    );
+  }
+
+  return {
+    ok: true,
+    invite: {
+      id: redeemedInvite.id,
+      inviteeEmail: redeemedInvite.invitee_email,
+      communityId: redeemedInvite.community_id,
+      redeemedAt: redeemedInvite.redeemed_at ?? redemptionPayload.redeemed_at,
+    },
   };
 }
