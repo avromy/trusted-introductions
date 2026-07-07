@@ -8,21 +8,57 @@ The product is **not** a recruiting platform, job board, or applicant tracking s
 
 ## Current Repository Status
 
-This repository is in an early migration state. The engineering source of truth now lives in [`/docs`](docs/), with architecture, product requirements, standards, risks, roadmap, milestones, and handoff guidance documented there.
+The engineering source of truth lives in [`/docs`](docs/). M1 adds a runnable Next.js App Router foundation with TypeScript, Tailwind CSS, ESLint, Prettier, Vitest, and Supabase configuration. Business workflows are intentionally placeholder-only until later milestones.
 
-No runnable application source code is currently present in the repository. The next implementation milestone is to select and scaffold the minimum viable application stack described in the documentation, then implement invite-only onboarding and trusted identity foundations.
+## Stack
 
-## Product Principles
+- Next.js App Router
+- TypeScript
+- Tailwind CSS
+- Supabase Auth, PostgreSQL, and Storage
+- Vitest and Testing Library
+- ESLint and Prettier
 
-- One person. One trusted identity. Multiple ways to contribute.
-- Trust over scale.
-- Human before résumé.
-- Match people to trusted access, not jobs.
-- Preserve the human bridge.
-- Explain every recommendation.
-- Measure outcomes, not activity.
-- Privacy settings override convenience.
-- AI must not write the helper’s personal endorsement.
+## Local Setup
+
+```bash
+git clone <repo-url>
+cd trusted-introductions
+npm install
+cp .env.example .env.local
+```
+
+Update `.env.local` with Supabase values. For local Supabase, run the Supabase CLI and copy the generated anon and service role keys into `.env.local`.
+
+Required environment variables:
+
+- `NEXT_PUBLIC_APP_URL`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_STORAGE_RESUME_BUCKET`
+
+## Development Commands
+
+```bash
+npm run dev          # start the app locally
+npm run lint         # run Next.js ESLint checks
+npm run typecheck    # run TypeScript without emitting files
+npm run test         # run unit tests
+npm run build        # create a production build
+npm run format:check # verify Prettier formatting
+```
+
+## Supabase
+
+Supabase project configuration is in [`supabase/config.toml`](supabase/config.toml). The initial foundation migration enables `pgcrypto` and creates a private `private-resumes` storage bucket without adding business-domain tables.
+
+Apply migrations with the Supabase CLI when a local project is running:
+
+```bash
+supabase start
+supabase db reset
+```
 
 ## Documentation Map
 
@@ -45,47 +81,14 @@ Start here when joining the project or opening a new Codex session:
 - [Technical Decisions](docs/TechnicalDecisions/) — ADRs.
 - [Engineering Handoff Template](docs/handoffs/EngineeringHandoffTemplate.md) — session handoff format.
 
-## How to Run It
+## Product Principles
 
-There is not yet an application to run. For now:
-
-```bash
-git clone <repo-url>
-cd trusted-introductions
-cp .env.example .env
-```
-
-Once the application is scaffolded, update this section with the package manager, install command, dev server command, database setup, migrations, tests, linting, typecheck, and build commands.
-
-## CI / Build Status
-
-A placeholder CI workflow exists at [`.github/workflows/ci.yml`](.github/workflows/ci.yml). It currently validates that required documentation exists. When application code is added, CI must be expanded to run install, lint, typecheck, tests, migrations, and build.
-
-## Current Milestones
-
-1. **M0 — Repository operating system:** documentation, ADRs, handoff template, contribution workflow, and CI baseline.
-2. **M1 — Application foundation:** scaffold app, auth, database, environments, and deployment path.
-3. **M2 — Invite-only onboarding:** invite creation, invite redemption, trusted identity profile, and privacy preferences.
-4. **M3 — Matching foundation:** helper/job-seeker signals, explainable recommendations, and manual review.
-5. **M4 — Help and outcome tracking:** introductions, follow-ups, outcomes, and community health reporting.
-
-See [Milestones](docs/Milestones.md) and [Roadmap](docs/Roadmap.md) for details.
-
-## Current Technical Risks
-
-- The runnable application stack has not been selected or scaffolded.
-- Identity, privacy, and invite decisions are documented as initial ADRs but not yet implemented.
-- Resume handling and public meet pages require careful privacy controls before launch.
-- Matching recommendations must be explainable and auditable.
-- AI features must avoid generating personal endorsements on behalf of helpers.
-
-See [Audit](docs/Audit.md), [Architecture](docs/Architecture.md), and [Backlog](docs/Backlog.md) for more detail.
-
-## How to Continue Development
-
-1. Read this README and the `/docs` index above.
-2. Review [Audit](docs/Audit.md) for the current repository state.
-3. Review [Milestones](docs/Milestones.md) and pick the next unblocked milestone task.
-4. Record significant technical decisions as ADRs in `docs/TechnicalDecisions/`.
-5. Keep implementation, docs, `.env.example`, CI, and handoff notes synchronized.
-6. Before opening a PR, run all available checks and fill out the PR template.
+- One person. One trusted identity. Multiple ways to contribute.
+- Trust over scale.
+- Human before résumé.
+- Match people to trusted access, not jobs.
+- Preserve the human bridge.
+- Explain every recommendation.
+- Measure outcomes, not activity.
+- Privacy settings override convenience.
+- AI must not write the helper’s personal endorsement.
