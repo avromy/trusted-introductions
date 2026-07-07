@@ -49,6 +49,10 @@ export type CurrentIdentityResult =
   | { identity: AuthIdentity; error: null }
   | { identity: null; error: AuthHelperError | null };
 
+function getServerAuthClient(): SupabaseAuthClient {
+  return createClient() as unknown as SupabaseAuthClient;
+}
+
 function toLookupError(error: { message?: string } | null): AuthHelperError | null {
   if (!error) {
     return null;
@@ -68,9 +72,10 @@ function firstIdentityFor(user: AuthUser): AuthIdentity | null {
 }
 
 export async function getCurrentUser(
-  client: SupabaseAuthClient = createClient(),
+  client?: SupabaseAuthClient,
 ): Promise<CurrentUserResult> {
-  const { data, error } = await client.auth.getUser();
+  const authClient = client ?? getServerAuthClient();
+  const { data, error } = await authClient.auth.getUser();
   const lookupError = toLookupError(error);
 
   if (lookupError) {
@@ -95,7 +100,7 @@ export async function requireCurrentUser(client?: SupabaseAuthClient): Promise<A
 }
 
 export async function getCurrentIdentity(
-  client: SupabaseAuthClient = createClient(),
+  client?: SupabaseAuthClient,
 ): Promise<CurrentIdentityResult> {
   const { user, error } = await getCurrentUser(client);
 
@@ -107,7 +112,13 @@ export async function getCurrentIdentity(
     return { identity: null, error: null };
   }
 
-  return { identity: firstIdentityFor(user), error: null };
+  const identity = firstIdentityFor(user);
+
+  if (!identity) {
+    return { identity: null, error: null };
+  }
+
+  return { identity, error: null };
 }
 
 export async function requireCurrentIdentity(client?: SupabaseAuthClient): Promise<AuthIdentity> {
