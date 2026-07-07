@@ -1,10 +1,13 @@
 export {
   createInviteAction,
+  redeemInviteAction,
   revokeInviteAction,
   type CreateInviteActionInput,
   type CreateInviteActionResult,
   type InviteCreationSupabaseClient,
+  type InviteRedemptionSupabaseClient,
   type InviteRevocationSupabaseClient,
+  type RedeemInviteActionResult,
   type RevokeInviteActionResult,
 } from './actions';
 
