@@ -2,149 +2,117 @@
 
 ## Status
 
-Proposed. No migrations exist yet.
+M1 foundation exists in `supabase/migrations/0001_foundation.sql`. M2 invite-only onboarding foundation is represented by the additive migration in `supabase/migrations/0002_m2_invite_onboarding_foundation.sql`.
 
-## Entity Overview
+## M2 Invite-Only Onboarding Entities
 
-### people
+### trusted_identities
 
-Represents one trusted identity per person.
+Represents one trusted identity per person and optionally links to a Supabase auth user.
 
 - id
+- user_id
 - primary_email
 - display_name
-- legal_name_optional
-- phone_optional
-- community_affiliation_optional
-- identity_status
+- legal_name
+- phone
+- status
+- metadata
 - created_at
 - updated_at
 
-### invites
+### communities
 
-Tracks invite creation and redemption.
+Represents invite-only communities that can grant roles, affiliations, and invitations.
 
 - id
-- inviter_person_id
-- invitee_email
-- invite_code_hash
-- status
-- expires_at
-- redeemed_by_person_id
+- slug
+- name
+- description
+- created_by_identity_id
 - created_at
-- redeemed_at
+- updated_at
 
-### profiles
+### user_roles
 
-Stores user-facing profile details.
+Represents role assignments for trusted identities, optionally scoped to a community.
 
 - id
-- person_id
-- headline
-- bio
-- location
-- linkedin_url
-- visibility
+- identity_id
+- community_id
+- role
+- granted_by_identity_id
+- created_at
+- updated_at
+
+### invitations
+
+Tracks invite creation and redemption. Invite tokens are stored as hashes only.
+
+- id
+- community_id
+- inviter_identity_id
+- invitee_email
+- token_hash
+- status
+- redemption_status
+- redeemed_by_identity_id
+- expires_at
+- redeemed_at
+- created_at
+- updated_at
+
+### affiliations
+
+Represents an identity's affiliation with a community.
+
+- id
+- identity_id
+- community_id
+- affiliation_type
+- title
+- organization
+- starts_at
+- ends_at
 - created_at
 - updated_at
 
 ### privacy_settings
 
-Stores explicit privacy choices.
+Stores explicit privacy choices for an identity.
 
 - id
-- person_id
-- resume_visibility
+- identity_id
 - profile_visibility
 - contact_visibility
-- public_meet_page_enabled
+- resume_visibility
 - allow_ai_summary
-- updated_at
-
-### job_seeker_requests
-
-Represents a help request, not a job application.
-
-- id
-- person_id
-- target_roles
-- target_industries
-- target_locations
-- help_needed
-- urgency
-- status
+- public_meet_page_enabled
 - created_at
 - updated_at
-
-### helper_capabilities
-
-Represents ways a helper can contribute.
-
-- id
-- person_id
-- industries
-- companies
-- functions
-- contribution_modes
-- capacity_status
-- notes
-- updated_at
-
-### matches
-
-Stores explainable recommendations.
-
-- id
-- seeker_request_id
-- helper_person_id
-- score
-- explanation
-- status
-- reviewed_by_person_id
-- created_at
-- updated_at
-
-### introductions
-
-Tracks human bridge workflows.
-
-- id
-- match_id
-- seeker_person_id
-- helper_person_id
-- status
-- helper_message_optional
-- steward_notes
-- created_at
-- completed_at
-
-### outcomes
-
-Tracks results of help.
-
-- id
-- introduction_id
-- outcome_type
-- outcome_notes
-- follow_up_date
-- recorded_by_person_id
-- created_at
 
 ### audit_events
 
-Append-only record for sensitive actions.
+Append-only record for sensitive onboarding actions.
 
 - id
-- actor_person_id
+- actor_identity_id
+- community_id
 - event_type
-- subject_type
+- subject_table
 - subject_id
-- metadata_json
+- metadata
 - created_at
 
-## Required Constraints
+## Constraints and Indexes
 
-- `people.primary_email` must be unique.
-- Invite codes must be stored hashed, never plaintext.
-- Privacy settings must be checked before exposing profile, contact, resume, or public page data.
-- Sensitive state transitions should emit audit events.
+- `trusted_identities.primary_email` is unique and normalized to lowercase.
+- `communities.slug` is unique and URL-safe.
+- `invitations.token_hash` is unique; plaintext invite tokens are not stored.
+- Foreign keys connect roles, invitations, affiliations, privacy settings, and audit events to trusted identities and communities.
+- Indexes support invite token lookup, identity lookup, community lookup, and audit lookup.
+- Row level security is enabled on M2 domain tables. Complex access policies are intentionally deferred.
+
+## Deferred
+
+The M2 migration does not add matching, introduction workflow, public page, or application business-logic tables.
