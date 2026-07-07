@@ -23,11 +23,11 @@ export interface TrustedIdentity {
 
 export interface Invite {
   id: string;
-  inviterPersonId: string;
+  inviterIdentityId: string;
   inviteeEmail: string;
   status: InviteStatus;
   expiresAt: string;
-  redeemedByPersonId?: string | null;
+  redeemedByIdentityId?: string | null;
   createdAt: string;
   redeemedAt?: string | null;
 }
@@ -42,7 +42,7 @@ export interface Community {
 
 export interface Affiliation {
   id: string;
-  personId: string;
+  identityId: string;
   communityId: string;
   role: UserRole;
   label?: string | null;
@@ -56,7 +56,7 @@ export type ContactVisibility = 'private' | 'stewards' | 'matched_helpers';
 
 export interface PrivacySettings {
   id: string;
-  personId: string;
+  identityId: string;
   resumeVisibility: ResumeVisibility;
   profileVisibility: ProfileVisibility;
   contactVisibility: ContactVisibility;
@@ -67,9 +67,9 @@ export interface PrivacySettings {
 
 export interface AuditEvent<TMetadata extends Record<string, unknown> = Record<string, unknown>> {
   id: string;
-  actorPersonId?: string | null;
+  actorIdentityId?: string | null;
   eventType: string;
-  subjectType: string;
+  subjectTable: string;
   subjectId: string;
   metadata: TMetadata;
   createdAt: string;
