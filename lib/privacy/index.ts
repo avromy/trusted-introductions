@@ -30,3 +30,14 @@ export function canShowContactInfo(settings?: Partial<PrivacySettings> | null): 
 export function canShowHelperActivity(settings?: Partial<PrivacySettings> | null): boolean {
   return settings?.helperActivityVisible === true;
 }
+
+export {
+  createPrivacySettingsUpsertPayload,
+  ensureDefaultPrivacySettings,
+  getPrivacySettingsByIdentityId,
+  mapPrivacySettingsRow,
+  upsertPrivacySettings,
+  type PrivacySettingsInput,
+  type PrivacySettingsSupabaseClient,
+  type PrivacySettingsUpsertPayload,
+} from './repository';
