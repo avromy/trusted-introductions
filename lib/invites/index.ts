@@ -1,10 +1,24 @@
 export {
+  createInviteAction,
+  revokeInviteAction,
+  validateInviteTokenAction,
+  type CreateInviteActionInput,
+  type CreateInviteActionResult,
+  type InviteCreationSupabaseClient,
+  type InviteRevocationSupabaseClient,
+  type InviteValidationActionResult,
+  type InviteValidationSupabaseClient,
+  type RevokeInviteActionResult,
+} from './actions';
+
+export {
   compareInviteTokenHash,
   generateInviteToken,
   getInviteExpirationDate,
   hashInviteToken,
   type InviteTokenHash,
 } from './tokens';
+
 export {
   createInvitePayload,
   getInviteInvalidReason,
@@ -35,9 +49,3 @@ export {
   type UpdateInviteRedeemedRepositoryInput,
   type UpdateInviteRevokedRepositoryInput,
 } from './repository';
-
-export {
-  validateInviteTokenAction,
-  type InviteValidationActionResult,
-  type InviteValidationSupabaseClient,
-} from './actions';
