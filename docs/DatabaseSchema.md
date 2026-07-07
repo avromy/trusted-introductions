@@ -2,7 +2,7 @@
 
 ## Status
 
-M1 foundation exists in `supabase/migrations/0001_foundation.sql`. M2 invite-only onboarding foundation is represented by the additive migration in `supabase/migrations/0002_m2_invite_onboarding_foundation.sql`.
+M1 foundation exists in `supabase/migrations/0001_foundation.sql`. M2 invite-only onboarding foundation is represented by the additive migration in `supabase/migrations/0002_m2_invite_onboarding_foundation.sql`. The current M2 helper/action layer uses this schema shape; no additional schema change is required for the documentation sync.
 
 ## M2 Invite-Only Onboarding Entities
 
@@ -47,7 +47,7 @@ Represents role assignments for trusted identities, optionally scoped to a commu
 
 ### invitations
 
-Tracks invite creation and redemption. Invite tokens are stored as hashes only.
+Tracks invite creation and redemption. Invite tokens are stored as hashes only, matching the M2 invite lifecycle helpers that generate plaintext tokens only for delivery and persist hashed token payloads.
 
 - id
 - community_id
@@ -79,7 +79,7 @@ Represents an identity's affiliation with a community.
 
 ### privacy_settings
 
-Stores explicit privacy choices for an identity.
+Stores explicit privacy choices for an identity. The M2 privacy helper defaults remain restrictive and should be persisted here before matching, helper activity disclosure, AI summaries, or public sharing depend on the settings.
 
 - id
 - identity_id
@@ -115,4 +115,4 @@ Append-only record for sensitive onboarding actions.
 
 ## Deferred
 
-The M2 migration does not add matching, introduction workflow, public page, or application business-logic tables.
+The M2 migration does not add matching, introduction workflow, public page, or application business-logic tables. Remaining M2 server work should connect invite, onboarding, identity/profile, privacy, and audit helpers to these existing tables before introducing M3 matching tables.
