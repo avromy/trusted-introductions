@@ -1,5 +1,3 @@
-import 'server-only';
-
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
 const INVITE_TOKEN_BYTES = 32;
