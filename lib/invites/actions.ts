@@ -3,6 +3,7 @@
 import { createAuditEventPayload } from '@/lib/audit';
 import { insertAuditEvent, type AuditEventsSupabaseClient } from '@/lib/audit/server';
 import {
+  AuthHelperError,
   requireCurrentIdentity,
   type AuthIdentity,
   type SupabaseAuthClient,
@@ -12,7 +13,11 @@ import {
   validateInviteForRedemption,
   type SafeInviteValidationResult,
 } from '@/lib/invites/lifecycle';
-import { getInviteByTokenHash, type InviteRepositoryClient } from '@/lib/invites/repository';
+import {
+  getInviteByTokenHash,
+  updateInviteRevoked,
+  type InviteRepositoryClient,
+} from '@/lib/invites/repository';
 import { hashInviteToken } from '@/lib/invites/tokens';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/types/supabase';
@@ -37,6 +42,10 @@ export type InviteCreationSupabaseClient = SupabaseAuthClient &
     };
   };
 
+export type InviteRevocationSupabaseClient = SupabaseAuthClient &
+  AuditEventsSupabaseClient &
+  InviteRepositoryClient;
+
 export type InviteValidationSupabaseClient = InviteRepositoryClient;
 
 export interface CreateInviteActionInput {
@@ -51,6 +60,29 @@ export interface CreateInviteActionResult {
   expiresAt: string | null;
 }
 
+export type RevokeInviteActionResult =
+  | {
+      ok: true;
+      invite: {
+        id: string;
+        status: InvitationRow['status'];
+        redemptionStatus: InvitationRow['redemption_status'];
+        revokedAt: string;
+      };
+    }
+  | {
+      ok: false;
+      error: 'validation_failed' | 'auth_required' | 'not_found';
+      message: string;
+    };
+
+export type InviteValidationActionResult =
+  | SafeInviteValidationResult
+  | {
+      valid: false;
+      reason: 'missing_token' | 'not_found';
+    };
+
 interface CreateInviteActionDependencies {
   supabase?: InviteCreationSupabaseClient;
   now?: Date;
@@ -61,15 +93,12 @@ interface ValidateInviteTokenActionDependencies {
   now?: Date;
 }
 
-export type InviteValidationActionResult =
-  | SafeInviteValidationResult
-  | {
-      valid: false;
-      reason: 'missing_token' | 'not_found';
-    };
-
 function getServerClient(): InviteCreationSupabaseClient {
   return createClient() as unknown as InviteCreationSupabaseClient;
+}
+
+function getServerRevocationClient(): InviteRevocationSupabaseClient {
+  return createClient() as unknown as InviteRevocationSupabaseClient;
 }
 
 function getInviteValidationServerClient(): InviteValidationSupabaseClient {
@@ -94,6 +123,12 @@ function normalizeInviteeEmail(email: string): string {
   }
 
   return normalizedEmail;
+}
+
+function normalizeInviteId(inviteId: string): string | null {
+  const normalizedInviteId = inviteId.trim();
+
+  return normalizedInviteId ? normalizedInviteId : null;
 }
 
 function normalizeExpiresAt(
@@ -186,4 +221,88 @@ export async function validateInviteTokenAction(
     token: normalizedToken,
     now: dependencies.now,
   });
+}
+
+function isInviteNotFoundError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    /0 rows|no rows|not found|multiple \(or no\) rows|JSON object requested/i.test(error.message)
+  );
+}
+
+export async function revokeInviteAction(
+  inviteId: string,
+  dependencies: { supabase?: InviteRevocationSupabaseClient; now?: Date } = {},
+): Promise<RevokeInviteActionResult> {
+  const normalizedInviteId = normalizeInviteId(inviteId);
+
+  if (!normalizedInviteId) {
+    return {
+      ok: false,
+      error: 'validation_failed',
+      message: 'Invite id is required.',
+    };
+  }
+
+  const supabase = dependencies.supabase ?? getServerRevocationClient();
+  const now = dependencies.now ?? new Date();
+  let actorIdentityId: string;
+
+  try {
+    actorIdentityId = getIdentityId(await requireCurrentIdentity(supabase));
+  } catch (error) {
+    if (error instanceof AuthHelperError) {
+      return {
+        ok: false,
+        error: 'auth_required',
+        message: 'A signed-in trusted identity is required to revoke an invite.',
+      };
+    }
+
+    throw error;
+  }
+
+  let revokedInvite: InvitationRow;
+
+  try {
+    revokedInvite = await updateInviteRevoked(
+      { inviteId: normalizedInviteId, revokedAt: now },
+      supabase,
+    );
+  } catch (error) {
+    if (isInviteNotFoundError(error)) {
+      return {
+        ok: false,
+        error: 'not_found',
+        message: 'Invite not found.',
+      };
+    }
+
+    throw error;
+  }
+
+  await insertAuditEvent(
+    supabase,
+    createAuditEventPayload({
+      eventType: 'invite.revoked',
+      actor: { type: 'user', id: actorIdentityId },
+      target: { type: 'invite', id: revokedInvite.id },
+      metadata: {
+        inviteeEmail: revokedInvite.invitee_email,
+        communityId: revokedInvite.community_id,
+        revokedAt: now.toISOString(),
+      },
+      occurredAt: now,
+    }),
+  );
+
+  return {
+    ok: true,
+    invite: {
+      id: revokedInvite.id,
+      status: revokedInvite.status,
+      redemptionStatus: revokedInvite.redemption_status,
+      revokedAt: revokedInvite.updated_at,
+    },
+  };
 }
