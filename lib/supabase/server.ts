@@ -4,6 +4,12 @@ import { cookies } from 'next/headers';
 import { getEnv } from '@/lib/env';
 import type { Database } from '@/types/supabase';
 
+type SupabaseCookie = {
+  name: string;
+  value: string;
+  options?: Record<string, never>;
+};
+
 export function createClient() {
   const cookieStore = cookies();
   const env = getEnv();
@@ -16,12 +22,12 @@ export function createClient() {
         getAll() {
           return cookieStore.getAll().map(({ name, value }) => ({ name, value }));
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
+        setAll(cookiesToSet: SupabaseCookie[]) {
+          cookiesToSet.forEach(({ name, value, options }: SupabaseCookie) => {
             cookieStore.set({
               name,
               value,
-              ...(options as Record<string, never>),
+              ...(options ?? {}),
             });
           });
         },
