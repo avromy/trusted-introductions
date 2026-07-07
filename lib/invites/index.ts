@@ -1,4 +1,14 @@
 export {
+  createInviteAction,
+  revokeInviteAction,
+  type CreateInviteActionInput,
+  type CreateInviteActionResult,
+  type InviteCreationSupabaseClient,
+  type InviteRevocationSupabaseClient,
+  type RevokeInviteActionResult,
+} from './actions';
+
+export {
   compareInviteTokenHash,
   generateInviteToken,
   getInviteExpirationDate,
