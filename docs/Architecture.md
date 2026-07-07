@@ -2,7 +2,20 @@
 
 ## Current State
 
-No runnable application exists yet. The repository currently contains documentation, templates, and placeholder CI. The first implementation milestone is to scaffold an application without rewriting or discarding future work.
+M1 — Application Foundation is complete. The repository now contains a runnable Next.js App Router application foundation with TypeScript, Tailwind CSS, reusable UI primitives, Vitest, ESLint, Prettier, Supabase client/server configuration, and an initial Supabase foundation migration.
+
+The application intentionally remains workflow-light: current pages and tests validate the foundation, navigation shape, and environment configuration without adding invite, profile, matching, introduction, or outcome business logic. M2 — Invite-only Onboarding is the current implementation focus.
+
+## Implemented Foundation
+
+- Next.js App Router web application under `app/`.
+- Shared UI primitives under `components/ui/`.
+- TypeScript path aliasing and strict typechecking.
+- Tailwind CSS styling foundation.
+- Supabase browser and server client helpers.
+- Environment variable validation for required app and Supabase settings.
+- Initial Supabase migration that enables `pgcrypto` and creates the private resume storage bucket.
+- Real npm scripts for development, typechecking, unit tests, formatting, linting, and production builds.
 
 ## Target System Shape
 
@@ -32,13 +45,25 @@ A conventional web application is expected:
 - AI may draft neutral summaries or match explanations, but must not write personal endorsements for helpers.
 - Public meet pages must be opt-in and revocable.
 - Feature flags must protect unfinished or sensitive capabilities.
+- M2 onboarding work must extend the existing foundation rather than restarting, rescaffolding, or resetting the architecture.
+
+## Current Implementation Focus: M2 Invite-only Onboarding
+
+M2 should add the first product workflow on top of the completed foundation:
+
+- Invite creation and redemption.
+- Trusted identity creation.
+- Initial profile setup.
+- Privacy settings.
+
+M2 should preserve the accepted product decisions in the ADRs, especially the one-person identity model, accountable invite graph, server-enforced privacy, and hashed invite-code handling.
 
 ## Open Technical Decisions
 
-- Web framework and hosting platform.
-- Auth provider versus custom auth.
-- Database provider and migration tooling.
-- Queue/background job implementation.
-- Email and notification provider.
+The M1 foundation selected the primary web stack and Supabase direction. Remaining implementation decisions should be captured in ADRs before production use where they materially affect safety, privacy, operations, or extensibility:
 
-These decisions should be captured in ADRs before production implementation.
+- Auth flow details and account recovery behavior.
+- Invite delivery provider and email template conventions.
+- Queue/background job implementation.
+- Notification provider and reminder scheduling.
+- Feature flag provider and rollout mechanics.
