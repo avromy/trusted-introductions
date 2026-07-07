@@ -11,10 +11,12 @@ import {
 import {
   createInvitePayload,
   validateInviteForRedemption,
+  type SafeInviteValidationDetails,
   type SafeInviteValidationResult,
 } from '@/lib/invites/lifecycle';
 import {
   getInviteByTokenHash,
+  updateInviteRedeemed,
   updateInviteRevoked,
   type InviteRepositoryClient,
 } from '@/lib/invites/repository';
@@ -42,11 +44,36 @@ export type InviteCreationSupabaseClient = SupabaseAuthClient &
     };
   };
 
+export type InviteRedemptionSupabaseClient = SupabaseAuthClient &
+  AuditEventsSupabaseClient &
+  InviteRepositoryClient;
+
 export type InviteRevocationSupabaseClient = SupabaseAuthClient &
   AuditEventsSupabaseClient &
   InviteRepositoryClient;
 
 export type InviteValidationSupabaseClient = InviteRepositoryClient;
+
+export type RedeemInviteActionFailureReason =
+  | 'invalid-token'
+  | 'auth-required'
+  | 'expired'
+  | 'revoked'
+  | 'redeemed'
+  | 'blocked';
+
+export type RedeemInviteActionResult =
+  | {
+      ok: true;
+      invite: SafeInviteValidationDetails & {
+        redeemedAt: string;
+        redeemedByIdentityId: string;
+      };
+    }
+  | {
+      ok: false;
+      reason: RedeemInviteActionFailureReason;
+    };
 
 export interface CreateInviteActionInput {
   inviteeEmail: string;
@@ -88,6 +115,11 @@ interface CreateInviteActionDependencies {
   now?: Date;
 }
 
+interface RedeemInviteActionDependencies {
+  supabase?: InviteRedemptionSupabaseClient;
+  now?: Date;
+}
+
 interface ValidateInviteTokenActionDependencies {
   supabase?: InviteValidationSupabaseClient;
   now?: Date;
@@ -95,6 +127,10 @@ interface ValidateInviteTokenActionDependencies {
 
 function getServerClient(): InviteCreationSupabaseClient {
   return createClient() as unknown as InviteCreationSupabaseClient;
+}
+
+function getRedemptionServerClient(): InviteRedemptionSupabaseClient {
+  return createClient() as unknown as InviteRedemptionSupabaseClient;
 }
 
 function getServerRevocationClient(): InviteRevocationSupabaseClient {
@@ -139,6 +175,12 @@ function normalizeExpiresAt(
   }
 
   return expiresAt instanceof Date ? expiresAt : new Date(expiresAt);
+}
+
+function normalizeInviteToken(token: string): string | null {
+  const normalizedToken = token.trim();
+
+  return normalizedToken.length > 0 ? normalizedToken : null;
 }
 
 async function insertInvite(
@@ -221,6 +263,88 @@ export async function validateInviteTokenAction(
     token: normalizedToken,
     now: dependencies.now,
   });
+}
+
+function isAuthRequiredError(error: unknown): boolean {
+  return (
+    error instanceof AuthHelperError &&
+    (error.code === 'AUTH_REQUIRED' || error.code === 'AUTH_IDENTITY_REQUIRED')
+  );
+}
+
+export async function redeemInviteAction(
+  token: string,
+  dependencies: RedeemInviteActionDependencies = {},
+): Promise<RedeemInviteActionResult> {
+  const normalizedToken = normalizeInviteToken(token);
+
+  if (!normalizedToken) {
+    return { ok: false, reason: 'invalid-token' };
+  }
+
+  const supabase = dependencies.supabase ?? getRedemptionServerClient();
+  const now = dependencies.now ?? new Date();
+  let identity: AuthIdentity;
+
+  try {
+    identity = await requireCurrentIdentity(supabase);
+  } catch (error) {
+    if (isAuthRequiredError(error)) {
+      return { ok: false, reason: 'auth-required' };
+    }
+
+    throw error;
+  }
+
+  const redeemedByIdentityId = getIdentityId(identity);
+  const tokenHash = hashInviteToken(normalizedToken);
+  const invite = await getInviteByTokenHash(tokenHash, supabase);
+
+  if (!invite) {
+    return { ok: false, reason: 'invalid-token' };
+  }
+
+  const validation = validateInviteForRedemption({ invite, token: normalizedToken, now });
+
+  if (!validation.valid) {
+    return {
+      ok: false,
+      reason: validation.reason === 'token_mismatch' ? 'invalid-token' : validation.reason,
+    };
+  }
+
+  const redeemedInvite = await updateInviteRedeemed(
+    {
+      inviteId: invite.id,
+      redeemedByIdentityId,
+      redeemedAt: now,
+    },
+    supabase,
+  );
+
+  await insertAuditEvent(
+    supabase,
+    createAuditEventPayload({
+      eventType: 'invite.accepted',
+      actor: { type: 'user', id: redeemedByIdentityId },
+      target: { type: 'invite', id: redeemedInvite.id },
+      metadata: {
+        communityId: redeemedInvite.community_id,
+        inviteeEmail: redeemedInvite.invitee_email,
+        redeemedAt: redeemedInvite.redeemed_at,
+      },
+      occurredAt: now,
+    }),
+  );
+
+  return {
+    ok: true,
+    invite: {
+      ...validation.invite,
+      redeemedAt: redeemedInvite.redeemed_at ?? now.toISOString(),
+      redeemedByIdentityId,
+    },
+  };
 }
 
 function isInviteNotFoundError(error: unknown): boolean {
