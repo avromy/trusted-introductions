@@ -7,7 +7,7 @@ import {
   type AuthIdentity,
   type SupabaseAuthClient,
 } from '@/lib/auth/session';
-import { createInvitePayload } from '@/lib/invites/lifecycle';
+import { createInvitePayload, markInviteRevokedPayload } from '@/lib/invites/lifecycle';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/types/supabase';
 
@@ -136,5 +136,116 @@ export async function createInviteAction(
     inviteId: createdInvite.id,
     plaintextToken: invite.plaintextToken,
     expiresAt: invite.payload.expires_at,
+  };
+}
+
+export type RevokeInviteActionErrorCode =
+  | 'AUTH_REQUIRED'
+  | 'INVITE_ID_REQUIRED'
+  | 'INVITE_NOT_FOUND'
+  | 'INVITE_REVOKE_FAILED'
+  | 'AUDIT_WRITE_FAILED';
+
+export type RevokeInviteActionResult =
+  | {
+      ok: true;
+      invite: {
+        id: string;
+        status: 'revoked';
+        redemptionStatus: 'blocked';
+      };
+    }
+  | {
+      ok: false;
+      error: {
+        code: RevokeInviteActionErrorCode;
+        message: string;
+      };
+    };
+
+type InviteRevocationSupabaseClient = AuditEventsSupabaseClient &
+  Parameters<typeof requireCurrentIdentity>[0] & {
+    from(table: 'invitations'): {
+      update(payload: ReturnType<typeof markInviteRevokedPayload>): {
+        eq(column: 'id', value: string): {
+          select(columns: 'id,status,redemption_status'): {
+            single(): Promise<{
+              data: { id: string; status: 'revoked'; redemption_status: 'blocked' } | null;
+              error: { code?: string; message?: string } | null;
+            }>;
+          };
+        };
+      };
+    };
+  };
+
+function safeRevokeError(code: RevokeInviteActionErrorCode, message: string): RevokeInviteActionResult {
+  return { ok: false, error: { code, message } };
+}
+
+function isNotFoundError(error: { code?: string; message?: string } | null): boolean {
+  return error?.code === 'PGRST116';
+}
+
+export async function revokeInviteAction(inviteId: string): Promise<RevokeInviteActionResult> {
+  const trimmedInviteId = inviteId.trim();
+
+  if (!trimmedInviteId) {
+    return safeRevokeError('INVITE_ID_REQUIRED', 'Invite id is required.');
+  }
+
+  const supabase = createClient() as unknown as InviteRevocationSupabaseClient;
+  let actorIdentityId: string;
+
+  try {
+    const identity = await requireCurrentIdentity(supabase);
+    actorIdentityId = getIdentityId(identity);
+  } catch {
+    return safeRevokeError('AUTH_REQUIRED', 'A signed-in identity is required to revoke an invite.');
+  }
+
+  const { data, error } = await supabase
+    .from('invitations')
+    .update(markInviteRevokedPayload())
+    .eq('id', trimmedInviteId)
+    .select('id,status,redemption_status')
+    .single();
+
+  if (error) {
+    if (isNotFoundError(error)) {
+      return safeRevokeError('INVITE_NOT_FOUND', 'Invite was not found.');
+    }
+
+    return safeRevokeError('INVITE_REVOKE_FAILED', 'Invite could not be revoked.');
+  }
+
+  if (!data) {
+    return safeRevokeError('INVITE_NOT_FOUND', 'Invite was not found.');
+  }
+
+  try {
+    await insertAuditEvent(
+      supabase,
+      createAuditEventPayload({
+        eventType: 'invite.revoked',
+        actor: { type: 'user', id: actorIdentityId },
+        target: { type: 'invite', id: data.id },
+        metadata: { inviteId: data.id },
+      }),
+    );
+  } catch {
+    return safeRevokeError(
+      'AUDIT_WRITE_FAILED',
+      'Invite was revoked, but the audit event could not be written.',
+    );
+  }
+
+  return {
+    ok: true,
+    invite: {
+      id: data.id,
+      status: data.status,
+      redemptionStatus: data.redemption_status,
+    },
   };
 }
