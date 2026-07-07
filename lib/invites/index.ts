@@ -35,3 +35,9 @@ export {
   type UpdateInviteRedeemedRepositoryInput,
   type UpdateInviteRevokedRepositoryInput,
 } from './repository';
+
+export {
+  validateInviteTokenAction,
+  type InviteValidationActionResult,
+  type InviteValidationSupabaseClient,
+} from './actions';

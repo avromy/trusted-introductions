@@ -7,7 +7,13 @@ import {
   type AuthIdentity,
   type SupabaseAuthClient,
 } from '@/lib/auth/session';
-import { createInvitePayload } from '@/lib/invites/lifecycle';
+import {
+  createInvitePayload,
+  validateInviteForRedemption,
+  type SafeInviteValidationResult,
+} from '@/lib/invites/lifecycle';
+import { getInviteByTokenHash, type InviteRepositoryClient } from '@/lib/invites/repository';
+import { hashInviteToken } from '@/lib/invites/tokens';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/types/supabase';
 
@@ -31,6 +37,8 @@ export type InviteCreationSupabaseClient = SupabaseAuthClient &
     };
   };
 
+export type InviteValidationSupabaseClient = InviteRepositoryClient;
+
 export interface CreateInviteActionInput {
   inviteeEmail: string;
   communityId?: string | null;
@@ -48,8 +56,24 @@ interface CreateInviteActionDependencies {
   now?: Date;
 }
 
+interface ValidateInviteTokenActionDependencies {
+  supabase?: InviteValidationSupabaseClient;
+  now?: Date;
+}
+
+export type InviteValidationActionResult =
+  | SafeInviteValidationResult
+  | {
+      valid: false;
+      reason: 'missing_token' | 'not_found';
+    };
+
 function getServerClient(): InviteCreationSupabaseClient {
   return createClient() as unknown as InviteCreationSupabaseClient;
+}
+
+function getInviteValidationServerClient(): InviteValidationSupabaseClient {
+  return createClient() as unknown as InviteValidationSupabaseClient;
 }
 
 function getIdentityId(identity: AuthIdentity): string {
@@ -137,4 +161,29 @@ export async function createInviteAction(
     plaintextToken: invite.plaintextToken,
     expiresAt: invite.payload.expires_at,
   };
+}
+
+export async function validateInviteTokenAction(
+  token: string | null | undefined,
+  dependencies: ValidateInviteTokenActionDependencies = {},
+): Promise<InviteValidationActionResult> {
+  const normalizedToken = token?.trim();
+
+  if (!normalizedToken) {
+    return { valid: false, reason: 'missing_token' };
+  }
+
+  const supabase = dependencies.supabase ?? getInviteValidationServerClient();
+  const tokenHash = hashInviteToken(normalizedToken);
+  const invite = await getInviteByTokenHash(tokenHash, supabase);
+
+  if (!invite) {
+    return { valid: false, reason: 'not_found' };
+  }
+
+  return validateInviteForRedemption({
+    invite,
+    token: normalizedToken,
+    now: dependencies.now,
+  });
 }
