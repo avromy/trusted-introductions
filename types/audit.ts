@@ -7,6 +7,7 @@ export const AUDIT_EVENT_TYPES = [
   'invite.revoked',
   'onboarding.started',
   'onboarding.completed',
+  'privacy_settings.updated',
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
