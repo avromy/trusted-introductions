@@ -35,6 +35,7 @@ type PrivacySettingsMutationClient = SupabaseAuthClient & {
         contact_visibility: Database['public']['Enums']['privacy_visibility'];
         public_meet_page_enabled: boolean;
         allow_ai_summary: boolean;
+        helper_activity_visible: boolean;
       },
       options: { onConflict: 'identity_id' },
     ): Promise<{ error: Error | null }>;
@@ -129,7 +130,10 @@ export async function savePrivacySettingsAction(
   const now = new Date().toISOString();
   const { settings } = normalized;
   const { error } = await supabase.from('privacy_settings').upsert(
-    createPrivacySettingsUpsertPayload(identityId, settings),
+    {
+      ...createPrivacySettingsUpsertPayload(identityId, settings),
+      helper_activity_visible: settings.helperActivityVisible,
+    },
     { onConflict: 'identity_id' },
   );
 

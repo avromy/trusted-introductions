@@ -52,9 +52,9 @@ type ProfileRow = {
 };
 
 type PrivacySettingsRow = {
-  profile_visibility?: PrivacySettings['profileVisibility'] | null;
-  resume_visibility?: PrivacySettings['resumeVisibility'] | null;
-  contact_visibility?: PrivacySettings['contactVisibility'] | null;
+  profile_visibility?: string | null;
+  resume_visibility?: string | null;
+  contact_visibility?: string | null;
   public_meet_page_enabled?: boolean | null;
   helper_activity_visible?: boolean | null;
   allow_ai_summary?: boolean | null;
@@ -161,9 +161,36 @@ async function loadPrivacySettings(
 
   return data
     ? {
-        profileVisibility: data.profile_visibility ?? undefined,
-        resumeVisibility: data.resume_visibility ?? undefined,
-        contactVisibility: data.contact_visibility ?? undefined,
+        profileVisibility:
+          data.profile_visibility === 'community' || data.profile_visibility === 'members'
+            ? 'members'
+            : data.profile_visibility === 'public'
+              ? 'public'
+              : 'private',
+        resumeVisibility:
+          data.resume_visibility === 'stewards'
+            ? 'helpers'
+            : data.resume_visibility === 'community'
+              ? 'members'
+              : data.resume_visibility === 'private' ||
+                  data.resume_visibility === 'introduction' ||
+                  data.resume_visibility === 'helpers' ||
+                  data.resume_visibility === 'members' ||
+                  data.resume_visibility === 'public'
+                ? data.resume_visibility
+                : undefined,
+        contactVisibility:
+          data.contact_visibility === 'stewards'
+            ? 'helpers'
+            : data.contact_visibility === 'community'
+              ? 'introduction'
+              : data.contact_visibility === 'private' ||
+                  data.contact_visibility === 'introduction' ||
+                  data.contact_visibility === 'helpers' ||
+                  data.contact_visibility === 'members' ||
+                  data.contact_visibility === 'public'
+                ? data.contact_visibility
+                : undefined,
         publicMeetPageEnabled: data.public_meet_page_enabled ?? undefined,
         helperActivityVisible: data.helper_activity_visible ?? undefined,
         allowAiSummary: data.allow_ai_summary ?? undefined,
