@@ -61,3 +61,56 @@ export interface JobSeekerRequestValidationResult {
   valid: boolean;
   errors: Record<string, string[]>;
 }
+
+export interface MatchSuggestion {
+  id: string;
+  requestId: string;
+  helperIdentityId: string;
+  helperCapabilityId: string;
+  rank: number;
+  score: number;
+  reasons: string[];
+  metadata: import('./supabase').Json;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MatchSuggestionInput {
+  helperIdentityId: string;
+  helperCapabilityId: string;
+  rank: number;
+  score: number;
+  reasons: string[];
+  metadata?: import('./supabase').Json;
+}
+export type HelperAvailability = 'available' | 'limited' | 'unavailable';
+
+export interface MatchingRequest {
+  id?: string;
+  desiredHelp?: readonly string[];
+  targetCompanies?: readonly string[];
+  targetIndustries?: readonly string[];
+  communities?: readonly string[];
+}
+
+export interface HelperCandidate {
+  id: string;
+  displayName?: string;
+  helpTypes?: readonly string[];
+  companies?: readonly string[];
+  industries?: readonly string[];
+  communities?: readonly string[];
+  availability?: HelperAvailability;
+  relationshipStrength?: number;
+  allowMatching?: boolean;
+}
+
+export interface MatchExplanation {
+  score: number;
+  reasons: string[];
+}
+
+export interface RankedHelperCandidate extends HelperCandidate {
+  matchScore: number;
+  matchExplanation: MatchExplanation;
+}

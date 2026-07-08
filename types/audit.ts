@@ -10,6 +10,7 @@ export const AUDIT_EVENT_TYPES = [
   'privacy_settings.updated',
   'job_seeker_request.created',
   'helper_capability.upserted',
+  'match_suggestions.recalculated',
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
