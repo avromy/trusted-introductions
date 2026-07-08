@@ -128,6 +128,7 @@ describe('privacy repository helpers', () => {
         resume_visibility: 'community',
         allow_ai_summary: true,
         public_meet_page_enabled: true,
+        helper_activity_visible: false,
       },
       { onConflict: 'identity_id' },
     );
