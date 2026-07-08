@@ -81,6 +81,30 @@ export interface Database {
           weekly_intro_capacity: number;
         };
       };
+      introduction_follow_ups: {
+        Row: {
+          completed_at: string | null;
+          created_at: string;
+          created_by_identity_id: string;
+          due_at: string;
+          id: string;
+          introduction_id: string;
+          note: string | null;
+          skipped_at: string | null;
+          status: Database['public']['Enums']['introduction_follow_up_status'];
+          updated_at: string;
+        };
+      };
+      introductions: {
+        Row: {
+          created_at: string;
+          helper_identity_id: string | null;
+          id: string;
+          requester_identity_id: string | null;
+          steward_identity_id: string | null;
+          updated_at: string;
+        };
+      };
       job_seeker_requests: {
         Row: {
           closed_at: string | null;
@@ -145,6 +169,7 @@ export interface Database {
     Functions: Record<string, never>;
     Enums: {
       affiliation_type: 'member' | 'alumni' | 'employee' | 'volunteer' | 'partner' | 'other';
+      introduction_follow_up_status: 'scheduled' | 'completed' | 'skipped';
       invitation_status: 'pending' | 'accepted' | 'expired' | 'revoked';
       job_seeker_request_status: 'draft' | 'open' | 'paused' | 'matched' | 'closed' | 'withdrawn';
       invite_redemption_status: 'not_redeemed' | 'redeemed' | 'blocked';
