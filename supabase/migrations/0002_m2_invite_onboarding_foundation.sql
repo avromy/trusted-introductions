@@ -125,6 +125,7 @@ create table public.privacy_settings (
   resume_visibility public.privacy_visibility not null default 'private',
   allow_ai_summary boolean not null default false,
   public_meet_page_enabled boolean not null default false,
+  helper_activity_visible boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint privacy_settings_identity_id_key unique (identity_id)
