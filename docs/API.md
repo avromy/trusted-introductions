@@ -2,7 +2,7 @@
 
 ## Status
 
-No public HTTP application API is exposed yet. M2 now has a server-consumable helper/action foundation for invites, onboarding state, privacy checks, auth session identity, and audit event payloads. The next M2 API/server-action work should wrap these helpers with persistence, authorization, and audit writes rather than duplicating lifecycle logic in route handlers.
+No public HTTP application API is exposed yet. M2 now has server-consumable actions and repositories for the MVP onboarding path: invite creation, safe invite validation, invite redemption, invite revocation, trusted identity onboarding, profile setup, privacy settings, onboarding state loading, auth session identity, and audit event writes. The next public API/server-action expansion should focus on M3 matching and M4 introduction/outcome workflows while reusing the completed M2 onboarding actions instead of duplicating lifecycle logic in route handlers.
 
 ## Principles
 
@@ -13,11 +13,11 @@ No public HTTP application API is exposed yet. M2 now has a server-consumable he
 - Invite validation responses must be safe: do not return plaintext tokens, inviter identity details, or hidden community/member data.
 - Identity, profile, and privacy mutations should flow through server helpers/actions so client components do not enforce trust decisions by themselves.
 
-## Implemented Helper Layer
+## Implemented Helper/Action Layer
 
 ### Invitations
 
-The invite helper layer supports:
+The invite helper/action layer supports:
 
 - Creating insert payloads with normalized invitee email, inviter identity, optional community, expiration, pending status, not-redeemed status, and a hashed token.
 - Returning the plaintext token only at creation time for delivery workflows.
@@ -25,6 +25,8 @@ The invite helper layer supports:
 - Detecting invalid lifecycle states: expired, revoked, redeemed, blocked, and token mismatch.
 - Returning safe validation metadata limited to invite id, invitee email, community id, and expiration.
 - Producing payloads for redeemed and revoked invite state transitions.
+- Persisting invite creation, redemption, and revocation through server actions and repository helpers.
+- Writing audit events for invite creation, acceptance/redemption, and revocation.
 
 ### Onboarding State
 
@@ -36,32 +38,38 @@ The onboarding helper layer calculates the current onboarding step and next rout
 - Profile completeness.
 - Privacy settings completeness.
 
-### Identity, Profile, and Privacy Direction
+### Identity, Profile, and Privacy
 
-M2 identity/profile/privacy APIs should be server-first:
+The M2 identity/profile/privacy action layer is server-first:
 
-- Identity helpers should resolve the current signed-in auth identity and then load or create the trusted identity record during invite redemption.
-- Profile helpers should validate minimal member context and contribution-mode data before marking profile setup complete.
-- Privacy helpers should apply restrictive defaults and decide whether profile, resume, contact, helper activity, AI summary, or public meet page data may be exposed.
-- Future route handlers/server actions should compose these helpers with Supabase persistence and audit writes.
+- Identity actions resolve the current signed-in auth identity and load or create the trusted identity record during invite redemption.
+- Profile actions validate contribution mode and minimal member context before persisting setup data.
+- Privacy actions apply restrictive defaults and persist whether profile, resume, contact, helper activity, AI summary, or public meet page data may be exposed.
+- Onboarding server loading composes auth, trusted identity, role/profile, privacy, invite, and completion state for server-rendered onboarding pages.
 
-## Planned Endpoints / Server Actions
+## Implemented Server Actions and Planned Endpoints
 
-These remain planned integration points; exact route shape may be implemented as Next.js server actions or HTTP route handlers.
+The M2 onboarding integration points are implemented as Next.js server actions and repository helpers rather than public HTTP endpoints. Future M3/M4 route shape may use server actions or HTTP route handlers.
 
 ### Invitations
 
-- `POST /api/invites` — create an invite for an authorized trusted member or steward.
-- `GET /api/invites/:code` — validate invite metadata without revealing sensitive inviter data.
-- `POST /api/invites/:code/redeem` — redeem invite, create or attach trusted identity, and mark invite accepted/redeemed once.
-- `POST /api/invites/:id/revoke` — revoke or block an outstanding invite with an audit event.
+Implemented as server actions/repositories:
+
+- Create an invite for an authorized trusted member or steward.
+- Validate invite metadata without revealing sensitive inviter data.
+- Redeem invite, create or attach trusted identity, and mark invite accepted/redeemed once.
+- Revoke an outstanding invite with an audit event.
+
+Potential future HTTP equivalents may be added only if external clients need them.
 
 ### Identity and Profiles
 
-- `GET /api/me` — current auth identity, trusted identity, roles, onboarding state, and permissions.
-- `PATCH /api/me/role` — update role or contribution mode during onboarding.
-- `PATCH /api/me/profile` — update initial profile/member context.
-- `PATCH /api/me/privacy` — update privacy settings.
+Implemented as server actions/server loaders:
+
+- Current auth identity, trusted identity, roles, onboarding state, and permissions.
+- Role or contribution-mode update during onboarding.
+- Initial profile/member context update.
+- Privacy settings update.
 
 ### Job Seeker Requests
 
@@ -75,6 +83,8 @@ These remain planned integration points; exact route shape may be implemented as
 - `PATCH /api/helper-capabilities/me` — update helper capabilities and capacity.
 
 ### Matching
+
+M3 matching remains planned; no matching API or server action is implemented yet. Expected integration points:
 
 - `POST /api/matches/recalculate` — steward-only recalculation trigger.
 - `GET /api/seeker-requests/:id/matches` — steward or permitted seeker match list.
