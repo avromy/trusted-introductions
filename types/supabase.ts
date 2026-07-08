@@ -59,6 +59,7 @@ export interface Database {
       privacy_settings: {
         Row: {
           allow_ai_summary: boolean;
+          helper_activity_visible: boolean;
           contact_visibility: Database['public']['Enums']['privacy_visibility'];
           created_at: string;
           id: string;
