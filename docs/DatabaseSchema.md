@@ -2,7 +2,7 @@
 
 ## Status
 
-M1 foundation exists in `supabase/migrations/0001_foundation.sql`. M2 invite-only onboarding foundation is represented by the additive migration in `supabase/migrations/0002_m2_invite_onboarding_foundation.sql`. MVP reconciliation does not require a new migration in this PR: the current schema and TypeScript database types cover persisted onboarding and seeker request rows, while helper capability, match recalculation, steward review, introduction, follow-up, and outcome semantics are documented/tested at the MVP helper-contract layer pending production hardening.
+M1 foundation exists in `supabase/migrations/0001_foundation.sql`. M2 invite-only onboarding foundation is represented by the additive migration in `supabase/migrations/0002_m2_invite_onboarding_foundation.sql`. MVP introduction creation adds `supabase/migrations/0006_introduction_creation_workflow.sql` for durable introduction drafts from steward-approved persisted match suggestions. Helper capability, match recalculation, steward review, follow-up, and outcome semantics continue to be documented/tested at the MVP helper-contract layer pending production hardening.
 
 ## M2 Invite-Only Onboarding Entities
 
@@ -136,14 +136,29 @@ Represents a trusted member's job-help request for matching.
 - created_at
 - updated_at
 
+### introductions
+
+Represents the MVP introduction draft a steward creates after approving a persisted match suggestion.
+
+- id
+- request_id
+- match_suggestion_id
+- requester_identity_id
+- helper_identity_id
+- steward_identity_id
+- steward_review_id
+- status
+- message
+- created_at
+- updated_at
+
 ## Production Hardening Schema Remaining
 
-The MVP core is complete without adding new schema in this reconciliation PR. Before production launch, durable tables or columns should be added for the workflow concepts currently represented by helper contracts and tests:
+Before production launch, additional durable tables or columns should be added for the workflow concepts still represented by helper contracts and tests:
 
 - Helper capabilities, including categories, availability, capacity, helper preferences, and private notes.
 - Match proposals or match runs, including score, explanation, recalculation metadata, and status.
 - Steward reviews, including assignment, decision, decision reason, and audit linkage.
-- Introductions, including requester/helper/steward participants and introduction status.
 - Follow-ups or reminders, including due dates, completion, and notification state.
 - Outcomes, including final result, timestamps, reporting-safe metadata, and privacy-preserving aggregation fields.
 

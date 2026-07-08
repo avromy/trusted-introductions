@@ -101,6 +101,21 @@ export interface Database {
           work_authorization: string | null;
         };
       };
+      introductions: {
+        Row: {
+          created_at: string;
+          helper_identity_id: string;
+          id: string;
+          match_suggestion_id: string;
+          message: string | null;
+          request_id: string;
+          requester_identity_id: string;
+          status: Database['public']['Enums']['introduction_status'];
+          steward_identity_id: string;
+          steward_review_id: string;
+          updated_at: string;
+        };
+      };
       match_suggestions: {
         Row: {
           created_at: string;
@@ -159,6 +174,7 @@ export interface Database {
     Functions: Record<string, never>;
     Enums: {
       affiliation_type: 'member' | 'alumni' | 'employee' | 'volunteer' | 'partner' | 'other';
+      introduction_status: 'drafted' | 'sent' | 'accepted' | 'declined' | 'closed';
       invitation_status: 'pending' | 'accepted' | 'expired' | 'revoked';
       job_seeker_request_status: 'draft' | 'open' | 'paused' | 'matched' | 'closed' | 'withdrawn';
       invite_redemption_status: 'not_redeemed' | 'redeemed' | 'blocked';
