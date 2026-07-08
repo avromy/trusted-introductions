@@ -136,13 +136,27 @@ Represents a trusted member's job-help request for matching.
 - created_at
 - updated_at
 
+## steward_reviews
+
+Durably records steward review assignments and decisions for proposed helper matches. Decision reasons are private application data and audit events store only safe metadata.
+
+- id
+- request_id
+- steward_identity_id
+- subject_identity_id
+- match_suggestion_id
+- status
+- decision_reason
+- decided_at
+- created_at
+- updated_at
+
 ## Production Hardening Schema Remaining
 
 The MVP core is complete without adding new schema in this reconciliation PR. Before production launch, durable tables or columns should be added for the workflow concepts currently represented by helper contracts and tests:
 
 - Helper capabilities, including categories, availability, capacity, helper preferences, and private notes.
 - Match proposals or match runs, including score, explanation, recalculation metadata, and status.
-- Steward reviews, including assignment, decision, decision reason, and audit linkage.
 - Introductions, including requester/helper/steward participants and introduction status.
 - Follow-ups or reminders, including due dates, completion, and notification state.
 - Outcomes, including final result, timestamps, reporting-safe metadata, and privacy-preserving aggregation fields.
