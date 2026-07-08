@@ -82,7 +82,9 @@ function createInviteOnboardingFake() {
   function maybeSingle(table: TableName, filters: Record<string, unknown>) {
     if (table === 'invitations') {
       const rows = state.invitations.filter((row) =>
-        Object.entries(filters).every(([column, value]) => row[column as keyof InvitationRow] === value),
+        Object.entries(filters).every(
+          ([column, value]) => row[column as keyof InvitationRow] === value,
+        ),
       );
 
       return rows[0] ?? null;
@@ -101,7 +103,9 @@ function createInviteOnboardingFake() {
     if (table === 'user_roles') {
       return (
         state.userRoles.find((row) =>
-          Object.entries(filters).every(([column, value]) => row[column as keyof UserRoleRow] === value),
+          Object.entries(filters).every(
+            ([column, value]) => row[column as keyof UserRoleRow] === value,
+          ),
         ) ?? null
       );
     }
@@ -109,7 +113,9 @@ function createInviteOnboardingFake() {
     if (table === 'profiles') {
       return (
         state.profiles.find((row) =>
-          Object.entries(filters).every(([column, value]) => row[column as keyof ProfileRow] === value),
+          Object.entries(filters).every(
+            ([column, value]) => row[column as keyof ProfileRow] === value,
+          ),
         ) ?? null
       );
     }
@@ -339,7 +345,7 @@ describe('invite to onboarding integration flow', () => {
       privacySettings: {
         profileVisibility: 'members',
         resumeVisibility: 'helpers',
-        contactVisibility: 'introduction',
+        contactVisibility: 'members',
         publicMeetPageEnabled: false,
         helperActivityVisible: true,
         allowAiSummary: false,

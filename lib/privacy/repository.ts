@@ -32,6 +32,7 @@ export type PrivacySettingsUpsertPayload = {
   contact_visibility: StoredPrivacyVisibility;
   resume_visibility: StoredPrivacyVisibility;
   allow_ai_summary: boolean;
+  helper_activity_visible: boolean;
   public_meet_page_enabled: boolean;
 };
 
@@ -47,7 +48,7 @@ export type PrivacySettingsSupabaseClient = {
 export type PrivacySettingsInput = Partial<PrivacySettings>;
 
 const PRIVACY_SETTINGS_SELECT_COLUMNS =
-  'id, identity_id, profile_visibility, contact_visibility, resume_visibility, allow_ai_summary, public_meet_page_enabled, created_at, updated_at';
+  'id, identity_id, profile_visibility, contact_visibility, resume_visibility, allow_ai_summary, helper_activity_visible, public_meet_page_enabled, created_at, updated_at';
 
 function toStoredVisibility(visibility: string | undefined): StoredPrivacyVisibility {
   switch (visibility) {
@@ -90,6 +91,7 @@ export function mapPrivacySettingsRow(row: PrivacySettingsRow): PrivacySettings 
     contactVisibility: fromStoredSensitiveVisibility(row.contact_visibility),
     resumeVisibility: fromStoredSensitiveVisibility(row.resume_visibility),
     allowAiSummary: row.allow_ai_summary,
+    helperActivityVisible: row.helper_activity_visible,
     publicMeetPageEnabled: row.public_meet_page_enabled,
   };
 }
@@ -107,6 +109,7 @@ export function createPrivacySettingsUpsertPayload(
     contact_visibility: toStoredVisibility(merged.contactVisibility),
     resume_visibility: toStoredVisibility(merged.resumeVisibility),
     allow_ai_summary: merged.allowAiSummary,
+    helper_activity_visible: merged.helperActivityVisible,
     public_meet_page_enabled: merged.publicMeetPageEnabled,
   };
 }

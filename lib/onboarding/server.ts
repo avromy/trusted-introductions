@@ -51,15 +51,7 @@ type ProfileRow = {
   identity_id?: string | null;
 };
 
-type PrivacySettingsRow = {
-  profile_visibility?: PrivacySettings['profileVisibility'] | null;
-  resume_visibility?: PrivacySettings['resumeVisibility'] | null;
-  contact_visibility?: PrivacySettings['contactVisibility'] | null;
-  public_meet_page_enabled?: boolean | null;
-  helper_activity_visible?: boolean | null;
-  allow_ai_summary?: boolean | null;
-  identity_id?: string | null;
-};
+type PrivacySettingsRow = Database['public']['Tables']['privacy_settings']['Row'];
 
 export type OnboardingProgressSourceState = {
   user: AuthUser;
@@ -72,6 +64,32 @@ export type OnboardingProgressSourceState = {
 export type CurrentOnboardingProgress = OnboardingProgress & {
   state: OnboardingProgressSourceState;
 };
+
+function mapOnboardingPrivacyVisibility(value: string | null | undefined): string | undefined {
+  if (value === 'community') {
+    return 'members';
+  }
+
+  if (value === 'stewards') {
+    return 'helpers';
+  }
+
+  return value ?? undefined;
+}
+
+function mapOnboardingPrivacySettings(row: PrivacySettingsRow): PrivacySettings {
+  return {
+    profileVisibility: (mapOnboardingPrivacyVisibility(row.profile_visibility) ??
+      'private') as PrivacySettings['profileVisibility'],
+    resumeVisibility: (mapOnboardingPrivacyVisibility(row.resume_visibility) ??
+      'private') as PrivacySettings['resumeVisibility'],
+    contactVisibility: (mapOnboardingPrivacyVisibility(row.contact_visibility) ??
+      'private') as PrivacySettings['contactVisibility'],
+    publicMeetPageEnabled: row.public_meet_page_enabled,
+    helperActivityVisible: row.helper_activity_visible,
+    allowAiSummary: row.allow_ai_summary,
+  };
+}
 
 function getOnboardingClient(): OnboardingSupabaseClient {
   return createClient() as unknown as OnboardingSupabaseClient;
@@ -159,16 +177,7 @@ async function loadPrivacySettings(
     throw new Error(error.message ?? 'Unable to load onboarding privacy settings.');
   }
 
-  return data
-    ? {
-        profileVisibility: data.profile_visibility ?? undefined,
-        resumeVisibility: data.resume_visibility ?? undefined,
-        contactVisibility: data.contact_visibility ?? undefined,
-        publicMeetPageEnabled: data.public_meet_page_enabled ?? undefined,
-        helperActivityVisible: data.helper_activity_visible ?? undefined,
-        allowAiSummary: data.allow_ai_summary ?? undefined,
-      }
-    : null;
+  return data ? mapOnboardingPrivacySettings(data) : null;
 }
 
 async function loadInvite(

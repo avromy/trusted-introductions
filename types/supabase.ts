@@ -56,12 +56,33 @@ export interface Database {
           updated_at: string;
         };
       };
+      job_seeker_requests: {
+        Row: {
+          closed_at: string | null;
+          created_at: string;
+          headline: string;
+          id: string;
+          identity_id: string;
+          notes: string | null;
+          opened_at: string | null;
+          remote_preference: string | null;
+          resume_url: string | null;
+          salary_expectation: string | null;
+          status: Database['public']['Enums']['job_seeker_request_status'];
+          target_companies: string[];
+          target_locations: string[];
+          target_role: string;
+          updated_at: string;
+          work_authorization: string | null;
+        };
+      };
       privacy_settings: {
         Row: {
           allow_ai_summary: boolean;
           contact_visibility: Database['public']['Enums']['privacy_visibility'];
           created_at: string;
           id: string;
+          helper_activity_visible: boolean;
           identity_id: string;
           profile_visibility: Database['public']['Enums']['privacy_visibility'];
           public_meet_page_enabled: boolean;
@@ -100,6 +121,7 @@ export interface Database {
     Enums: {
       affiliation_type: 'member' | 'alumni' | 'employee' | 'volunteer' | 'partner' | 'other';
       invitation_status: 'pending' | 'accepted' | 'expired' | 'revoked';
+      job_seeker_request_status: 'draft' | 'open' | 'paused' | 'matched' | 'closed' | 'withdrawn';
       invite_redemption_status: 'not_redeemed' | 'redeemed' | 'blocked';
       privacy_visibility: 'private' | 'community' | 'stewards';
       trusted_identity_status: 'pending' | 'active' | 'suspended' | 'archived';
