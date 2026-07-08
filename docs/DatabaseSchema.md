@@ -2,7 +2,7 @@
 
 ## Status
 
-M1 foundation exists in `supabase/migrations/0001_foundation.sql`. M2 invite-only onboarding foundation is represented by the additive migration in `supabase/migrations/0002_m2_invite_onboarding_foundation.sql`. The completed M2 helper/action layer uses this schema shape for persisted invite, identity, profile, privacy, onboarding, and audit workflows; no additional schema change is required for the documentation sync.
+M1 foundation exists in `supabase/migrations/0001_foundation.sql`. M2 invite-only onboarding foundation is represented by the additive migration in `supabase/migrations/0002_m2_invite_onboarding_foundation.sql`. MVP reconciliation does not require a new migration in this PR: the current schema and TypeScript database types cover persisted onboarding and seeker request rows, while helper capability, match recalculation, steward review, introduction, follow-up, and outcome semantics are documented/tested at the MVP helper-contract layer pending production hardening.
 
 ## M2 Invite-Only Onboarding Entities
 
@@ -113,6 +113,38 @@ Append-only record for sensitive onboarding actions.
 - Indexes support invite token lookup, identity lookup, community lookup, and audit lookup.
 - Row level security is enabled on M2 domain tables. Complex access policies are intentionally deferred.
 
-## Deferred / MVP Remaining Schema
+## MVP Matching Entity
 
-The M2 migration does not add matching, introduction workflow, public page, or broader application business-logic tables. M2 onboarding persistence is now connected to the existing tables through server actions and repositories. M3 matching should introduce only the additional job seeker request, helper capability, match proposal, and steward review tables needed for the matching foundation, while continuing to reference M2 trusted identity, role, privacy, and audit tables. M4 can then add introduction, reminder, outcome, and reporting tables after matching semantics are stable.
+### job_seeker_requests
+
+Represents a trusted member's job-help request for matching.
+
+- id
+- identity_id
+- status
+- headline
+- target_role
+- target_companies
+- target_locations
+- remote_preference
+- salary_expectation
+- work_authorization
+- notes
+- resume_url
+- opened_at
+- closed_at
+- created_at
+- updated_at
+
+## Production Hardening Schema Remaining
+
+The MVP core is complete without adding new schema in this reconciliation PR. Before production launch, durable tables or columns should be added for the workflow concepts currently represented by helper contracts and tests:
+
+- Helper capabilities, including categories, availability, capacity, helper preferences, and private notes.
+- Match proposals or match runs, including score, explanation, recalculation metadata, and status.
+- Steward reviews, including assignment, decision, decision reason, and audit linkage.
+- Introductions, including requester/helper/steward participants and introduction status.
+- Follow-ups or reminders, including due dates, completion, and notification state.
+- Outcomes, including final result, timestamps, reporting-safe metadata, and privacy-preserving aggregation fields.
+
+These schema additions are production hardening work and should be introduced with RLS policies, authorization tests, migration runbooks, and data-retention/privacy review.

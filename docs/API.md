@@ -2,7 +2,7 @@
 
 ## Status
 
-No public HTTP application API is exposed yet. M2 now has server-consumable actions and repositories for the MVP onboarding path: invite creation, safe invite validation, invite redemption, invite revocation, trusted identity onboarding, profile setup, privacy settings, onboarding state loading, auth session identity, and audit event writes. The next public API/server-action expansion should focus on M3 matching and M4 introduction/outcome workflows while reusing the completed M2 onboarding actions instead of duplicating lifecycle logic in route handlers.
+No public HTTP application API is exposed yet. The MVP core is implemented as server-consumable helpers, actions, repositories, and documented contracts rather than external route handlers. M2 onboarding, M3 matching, and the M4 introduction/follow-up/outcome loop are complete for MVP coverage; production hardening remains before exposing stable public HTTP APIs.
 
 ## Principles
 
@@ -73,27 +73,55 @@ Implemented as server actions/server loaders:
 
 ### Job Seeker Requests
 
+Implemented for MVP as helpers/repositories/actions rather than public HTTP endpoints:
+
+- Normalize and validate seeker request intake.
+- Persist seeker request rows through repository helpers.
+- Serialize safe public/helper views without leaking private steward notes, salary, work authorization, or resume URL fields to unauthorized contexts.
+
+Potential future HTTP equivalents, after hardening:
+
 - `POST /api/seeker-requests` — create help request.
 - `GET /api/seeker-requests/:id` — view request subject to permissions.
 - `PATCH /api/seeker-requests/:id` — update request.
 
 ### Helper Capabilities
 
+Implemented for MVP as helper models and safe serializers:
+
+- Normalize supported helper categories, labels, availability, and weekly introduction capacity.
+- Strip private helper notes from serialized helper capability views.
+- Check whether a helper is available for introductions.
+
+Potential future HTTP equivalents, after hardening:
+
 - `GET /api/helper-capabilities/me` — view own helper settings.
 - `PATCH /api/helper-capabilities/me` — update helper capabilities and capacity.
 
 ### Matching
 
-M3 matching remains planned; no matching API or server action is implemented yet. Expected integration points:
+M3 matching is complete for MVP helper coverage:
+
+- Recalculate ranked helper candidates from deterministic matching signals.
+- Return human-readable explanations with each score.
+- Respect helper opt-out and unavailable states.
+- Apply steward review decision helpers for approval, rejection, needs-info transitions, final-status protection, and assigned-steward enforcement.
+
+Potential future HTTP equivalents, after hardening:
 
 - `POST /api/matches/recalculate` — steward-only recalculation trigger.
 - `GET /api/seeker-requests/:id/matches` — steward or permitted seeker match list.
 - `PATCH /api/matches/:id/status` — review, accept, defer, or reject match.
 
-### Introductions and Outcomes
+### Introductions, Follow-ups, and Outcomes
+
+M4 is complete for MVP reconciliation. The end-to-end MVP flow test represents introduction creation from an approved steward review, follow-up creation for that introduction, and outcome capture. Production route handlers, notification scheduling, and durable workflow tables remain hardening work.
+
+Potential future HTTP equivalents, after hardening:
 
 - `POST /api/introductions` — create introduction workflow from accepted match.
 - `PATCH /api/introductions/:id` — update status.
+- `POST /api/introductions/:id/follow-ups` — schedule or complete a follow-up.
 - `POST /api/introductions/:id/outcomes` — record outcome.
 
 ## Error Model

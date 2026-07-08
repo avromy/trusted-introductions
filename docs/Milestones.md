@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-M2 — Invite-only Onboarding is complete at the MVP helper/action layer. M1 application foundation is complete, and the product now has persisted onboarding server actions for invites, trusted identity creation, role/contribution mode selection, profile setup, privacy settings, and onboarding state loading. Current MVP work should move forward from this foundation into M3 matching and the M4 introduction/outcome loop instead of rebuilding onboarding primitives.
+MVP core is complete at the helper/action and documentation-contract layer. M1 and M2 are complete, M3 is complete for the MVP matching foundation, and M4 is complete for the MVP introduction/follow-up/outcome loop. Remaining work is production hardening: polished UX, operational notifications, stricter RLS/access policies, observability, deployment readiness, and broader browser/e2e coverage.
 
 ## M0 — Repository Operating System
 
@@ -27,7 +27,7 @@ M2 — Invite-only Onboarding is complete at the MVP helper/action layer. M1 app
 
 ## M2 — Invite-only Onboarding
 
-**Status:** Complete for MVP foundation
+**Status:** Complete for MVP
 
 Completed M2 scope:
 
@@ -43,35 +43,45 @@ Completed M2 scope:
 - Auth session helpers for current identity lookup and required signed-in identity handling.
 - Audit helper/server coverage for invite and sensitive onboarding mutations.
 - Placeholder onboarding screens for invite, role, profile, privacy, and completion.
-- Unit/integration coverage for invite lifecycle, invite actions/repositories, identity onboarding, profile setup, privacy settings, onboarding state/server loading, audit, auth session, and onboarding components.
-
-M2 follow-up hardening that can happen alongside later MVP work:
-
-- Replace placeholder onboarding screens with production UX and delivery copy.
-- Add end-to-end browser coverage for the full persisted onboarding path once the UX is finalized.
-- Expand RLS policies beyond the current MVP table-level foundation.
-- Add operational invite delivery and resend flows when notification infrastructure exists.
+- Unit/integration coverage for invite lifecycle, invite actions/repositories, identity onboarding, profile setup, privacy settings, onboarding state/server loading, audit, auth session, onboarding components, and the reconciled MVP flow.
 
 ## M3 — Matching Foundation
 
-**Status:** Current MVP remaining work / Next
+**Status:** Complete for MVP
 
-Matching is not yet implemented in application code or database schema. M3 should build on M2 identity, profile, privacy, role, and audit foundations.
+Completed MVP matching scope:
 
-Remaining M3 scope:
-
-- Job seeker request intake.
-- Helper capability intake.
-- Explainable matching model.
-- Steward review workflow.
-- Permission and privacy enforcement around request visibility, helper visibility, and match explanations.
-- Tests for matching scoring/explanations, review transitions, and privacy-safe access.
+- Job seeker request model, validation, normalization, safe serialization, repository mapping, and persistence coverage.
+- Helper capability model, category/availability normalization, capacity checks, private-note stripping, and helper capability coverage.
+- Deterministic explainable matching engine with help type, company, industry, community, availability, relationship strength, opt-out, and unavailable-helper handling.
+- Steward review decision helpers for approval, rejection, needs-info transitions, final-status protection, assigned-steward enforcement, and safe audit payloads.
+- End-to-end MVP flow test coverage that ties request creation, helper capability creation, match recalculation, and steward approval together.
 
 ## M4 — Help and Outcome Tracking
 
-**Status:** MVP remaining work / Later
+**Status:** Complete for MVP
 
-- Introduction workflow.
-- Follow-up reminders.
-- Outcome capture.
-- Community health reporting.
+Completed MVP loop scope:
+
+- Introduction creation is represented in the reconciled MVP flow from a steward-approved match.
+- Follow-up creation is represented in the reconciled MVP flow for the created introduction.
+- Outcome capture is represented in the reconciled MVP flow for a completed connection.
+- The MVP flow test verifies the core loop from invite through outcome without adding new product features.
+
+## MVP Core
+
+**Status:** Complete
+
+The core MVP loop is covered by implementation helpers, action/repository tests, and `tests/mvp-flow.test.ts`:
+
+> Invite → Onboard → Seeker request → Helper capability → Match recalculation → Steward review → Introduction → Follow-up → Outcome
+
+## Production Hardening Remaining
+
+- Replace placeholder screens with production-ready onboarding, matching, review, introduction, follow-up, and outcome UX.
+- Add browser-level end-to-end coverage for the full persisted flow after UX routes are finalized.
+- Expand RLS policies and authorization tests beyond the MVP table-level foundation.
+- Add operational invite delivery, reminder scheduling, notification templates, retries, and unsubscribe/compliance handling.
+- Add production observability, dashboards, structured logs, alerting, and runbooks.
+- Add reporting that summarizes community health without exposing private member data.
+- Run load, abuse-prevention, privacy, and security reviews before broader rollout.

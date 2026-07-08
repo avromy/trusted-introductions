@@ -1,26 +1,36 @@
 # Backlog
 
-## Now — M3 Matching Foundation
+## Now — Production Hardening After MVP Core
 
-M2 invite-only onboarding is complete for the MVP helper/action layer. The current MVP backlog should start from the persisted onboarding foundation: trusted identities, roles/contribution modes, profiles, privacy settings, invites, and audit events are available for matching workflows to consume.
+MVP core is complete: M1 foundation, M2 invite-only onboarding, M3 matching foundation, and M4 introduction/follow-up/outcome loop are reconciled for MVP. The current backlog should avoid adding new product surface area until the implemented MVP paths are hardened for production use.
 
-- Add job seeker request intake with server-side validation, persistence, ownership, and privacy-aware read access.
-- Add helper capability intake with contribution mode, capacity, preferences, and visibility rules.
-- Define the initial explainable matching model, including required hard filters and human-readable explanation fields.
-- Add steward review workflow for proposed matches, including accept, defer, reject, and recalculation states.
-- Centralize matching authorization around trusted identity, role, community, request ownership, helper consent, and privacy settings.
-- Emit audit events for sensitive matching decisions and status transitions.
-- Cover matching helpers, repositories, actions/routes, and review transitions with typechecking, tests, and build validation.
-
-## MVP Remaining After M3
-
-- Introduction workflow from steward-approved matches.
-- Follow-up reminders for introductions and stalled help loops.
-- Outcome capture for completed, declined, unresponsive, and follow-up-needed introductions.
-- Basic community health reporting that avoids exposing private member data.
-- Production onboarding UX polish and end-to-end coverage for the persisted onboarding path.
+- Replace placeholder route shells with production-ready UX and copy for onboarding, seeker requests, helper capabilities, steward review, introductions, follow-ups, and outcome capture.
+- Add browser-level end-to-end tests for the persisted MVP loop once UX routes are finalized.
+- Expand RLS policies and authorization coverage for identity, invite, profile, privacy, seeker request, helper capability, match, review, introduction, follow-up, and outcome access.
+- Add operational notifications for invite delivery, introduction coordination, follow-up reminders, and outcome prompts.
+- Add observability: structured logs, audit review dashboards, health checks, error tracking, and steward-facing operational reports.
+- Add deployment hardening: environment validation in CI/CD, migration runbooks, backup/restore drills, and release rollback guidance.
+- Add privacy/security review tasks for sensitive profile, resume, contact, review, introduction, and outcome data.
 
 ## Completed
+
+### MVP Core Reconciliation
+
+- Added an MVP flow test covering invite lifecycle, onboarding completion, seeker request creation, helper capability creation, match recalculation, steward review approval, introduction creation, follow-up creation, and outcome capture.
+- Updated milestone and API/database documentation to mark M1 complete, M2 complete, M3 complete for MVP, M4 complete for MVP, and MVP core complete.
+- Confirmed production hardening remains separate from new feature development.
+
+### M4 — Help and Outcome Tracking for MVP
+
+- Reconciled the introduction, follow-up, and outcome loop in the MVP flow test without adding new product features.
+- Documented that production UX, notification scheduling, and operational reporting remain hardening work.
+
+### M3 — Matching Foundation for MVP
+
+- Added job seeker request validation, normalization, safe serialization, repository mapping, persistence coverage, and server-action shape.
+- Added helper capability normalization, availability/capacity handling, safe serialization, and test coverage.
+- Added explainable matching engine helpers with deterministic scoring and explanations.
+- Added steward review decision helpers and audit-safe event payload coverage.
 
 ### M2 — Invite-only Onboarding Helper/Action Layer
 
@@ -59,6 +69,7 @@ M2 invite-only onboarding is complete for the MVP helper/action layer. The curre
 ## Later
 
 - Public meet pages.
-- Notification scheduling.
+- Notification scheduling beyond MVP reminders.
 - AI-assisted neutral summaries with endorsement safeguards.
 - Advanced feature flags.
+- Advanced analytics after privacy review.
