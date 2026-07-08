@@ -76,6 +76,20 @@ export interface Database {
           work_authorization: string | null;
         };
       };
+      match_suggestions: {
+        Row: {
+          created_at: string;
+          explanation: Json;
+          helper_identity_id: string;
+          id: string;
+          recalculated_at: string;
+          recalculated_by_identity_id: string;
+          request_id: string;
+          score: number;
+          status: Database['public']['Enums']['match_suggestion_status'];
+          updated_at: string;
+        };
+      };
       privacy_settings: {
         Row: {
           allow_ai_summary: boolean;
@@ -122,6 +136,7 @@ export interface Database {
       affiliation_type: 'member' | 'alumni' | 'employee' | 'volunteer' | 'partner' | 'other';
       invitation_status: 'pending' | 'accepted' | 'expired' | 'revoked';
       job_seeker_request_status: 'draft' | 'open' | 'paused' | 'matched' | 'closed' | 'withdrawn';
+      match_suggestion_status: 'suggested' | 'approved' | 'rejected' | 'deferred';
       invite_redemption_status: 'not_redeemed' | 'redeemed' | 'blocked';
       privacy_visibility: 'private' | 'community' | 'stewards';
       trusted_identity_status: 'pending' | 'active' | 'suspended' | 'archived';

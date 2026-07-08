@@ -61,3 +61,30 @@ export interface JobSeekerRequestValidationResult {
   valid: boolean;
   errors: Record<string, string[]>;
 }
+
+export const MATCH_SUGGESTION_STATUS_VALUES = [
+  'suggested',
+  'approved',
+  'rejected',
+  'deferred',
+] as const;
+
+export type MatchSuggestionStatus = (typeof MATCH_SUGGESTION_STATUS_VALUES)[number];
+
+export interface MatchSuggestionExplanation {
+  score: number;
+  reasons: string[];
+}
+
+export interface MatchSuggestion {
+  id: string;
+  requestId: string;
+  helperIdentityId: string;
+  score: number;
+  explanation: MatchSuggestionExplanation;
+  status: MatchSuggestionStatus;
+  recalculatedByIdentityId: string;
+  recalculatedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
