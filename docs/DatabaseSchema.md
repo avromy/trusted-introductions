@@ -113,6 +113,153 @@ Append-only record for sensitive onboarding actions.
 - Indexes support invite token lookup, identity lookup, community lookup, and audit lookup.
 - Row level security is enabled on M2 domain tables. Complex access policies are intentionally deferred.
 
+## MVP Matching, Introduction, and Outcome Entities
+
+The additive MVP migration in `supabase/migrations/0003_mvp_matching_intro_outcome_schema.sql` adds matching and introduction workflow persistence without altering or removing existing M2 tables.
+
+### job_seeker_requests
+
+Captures seeker intake for a requested role, target companies or locations, privacy-sensitive notes, and lifecycle timestamps.
+
+- id
+- identity_id
+- community_id
+- status
+- headline
+- target_role
+- target_companies
+- target_locations
+- remote_preference
+- salary_expectation
+- work_authorization
+- notes
+- resume_url
+- metadata
+- opened_at
+- closed_at
+- created_at
+- updated_at
+
+### helper_capabilities
+
+Captures helper intake, availability, capacity, expertise categories, and private steward/helper notes.
+
+- id
+- identity_id
+- community_id
+- categories
+- availability_status
+- weekly_intro_capacity
+- next_available_at
+- industries
+- geographies
+- languages
+- private_notes
+- metadata
+- created_at
+- updated_at
+
+### match_suggestions
+
+Represents a proposed helper match for a job seeker request, including rationale, optional scoring, review status, expiration, and conversion to an introduction.
+
+- id
+- job_seeker_request_id
+- helper_capability_id
+- helper_identity_id
+- suggested_by_identity_id
+- community_id
+- status
+- score
+- rationale
+- metadata
+- expires_at
+- converted_introduction_id
+- created_at
+- updated_at
+
+### steward_match_reviews
+
+Tracks steward review decisions for match suggestions before an introduction is sent.
+
+- id
+- match_suggestion_id
+- steward_identity_id
+- subject_identity_id
+- status
+- decision_reason
+- decided_at
+- due_at
+- metadata
+- created_at
+- updated_at
+
+### introductions
+
+Tracks the actual introduction workflow from consent and send through response, completion, decline, or cancellation.
+
+- id
+- match_suggestion_id
+- job_seeker_request_id
+- helper_identity_id
+- seeker_identity_id
+- introduced_by_identity_id
+- community_id
+- status
+- subject
+- message
+- consent_requested_at
+- consented_at
+- sent_at
+- responded_at
+- completed_at
+- canceled_at
+- metadata
+- created_at
+- updated_at
+
+### introduction_follow_ups
+
+Schedules and records follow-up nudges for introductions.
+
+- id
+- introduction_id
+- assigned_to_identity_id
+- status
+- sequence_number
+- due_at
+- sent_at
+- skipped_reason
+- notes
+- metadata
+- created_at
+- updated_at
+
+### introduction_outcomes
+
+Records qualitative and lightweight quantitative outcomes after introductions.
+
+- id
+- introduction_id
+- reported_by_identity_id
+- status
+- met_at
+- outcome_summary
+- next_steps
+- success_score
+- metadata
+- created_at
+- updated_at
+
+## Constraints and Indexes
+
+- `trusted_identities.primary_email` is unique and normalized to lowercase.
+- `communities.slug` is unique and URL-safe.
+- `invitations.token_hash` is unique; plaintext invite tokens are not stored.
+- Foreign keys connect roles, invitations, affiliations, privacy settings, audit events, seeker requests, helper capabilities, match suggestions, steward reviews, introductions, follow-ups, and outcomes to trusted identities and communities.
+- Matching indexes support seeker request lookup, helper availability lookup, match review queues, introduction participant queues, due follow-ups, and outcome reporting.
+- Row level security is enabled on M2 and MVP matching domain tables. Complex access policies are intentionally deferred; until policies are added, server-side service-role access is required for these protected tables.
+
 ## Deferred / MVP Remaining Schema
 
-The M2 migration does not add matching, introduction workflow, public page, or broader application business-logic tables. M2 onboarding persistence is now connected to the existing tables through server actions and repositories. M3 matching should introduce only the additional job seeker request, helper capability, match proposal, and steward review tables needed for the matching foundation, while continuing to reference M2 trusted identity, role, privacy, and audit tables. M4 can then add introduction, reminder, outcome, and reporting tables after matching semantics are stable.
+Public page, notification delivery, reporting rollups, and richer matching model tables remain deferred. Future migrations should stay additive and continue referencing the M2 identity, role, privacy, audit, and MVP matching workflow tables.
