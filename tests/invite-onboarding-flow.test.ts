@@ -303,8 +303,8 @@ describe('invite to onboarding integration flow', () => {
     await expect(
       savePrivacySettingsAction({
         profileVisibility: 'members',
-        resumeVisibility: 'helpers',
-        contactVisibility: 'introduction',
+        resumeVisibility: 'members',
+        contactVisibility: 'members',
         publicMeetPageEnabled: false,
         helperActivityVisible: true,
         allowAiSummary: false,
@@ -313,8 +313,8 @@ describe('invite to onboarding integration flow', () => {
       ok: true,
       settings: {
         profileVisibility: 'members',
-        resumeVisibility: 'helpers',
-        contactVisibility: 'introduction',
+        resumeVisibility: 'members',
+        contactVisibility: 'members',
         publicMeetPageEnabled: false,
         helperActivityVisible: true,
         allowAiSummary: false,
@@ -338,8 +338,8 @@ describe('invite to onboarding integration flow', () => {
       },
       privacySettings: {
         profileVisibility: 'members',
-        resumeVisibility: 'helpers',
-        contactVisibility: 'introduction',
+        resumeVisibility: 'members',
+        contactVisibility: 'members',
         publicMeetPageEnabled: false,
         helperActivityVisible: true,
         allowAiSummary: false,

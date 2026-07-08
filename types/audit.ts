@@ -8,6 +8,9 @@ export const AUDIT_EVENT_TYPES = [
   'onboarding.started',
   'onboarding.completed',
   'privacy_settings.updated',
+  'introduction_follow_up.created',
+  'introduction_follow_up.completed',
+  'introduction_follow_up.skipped',
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];

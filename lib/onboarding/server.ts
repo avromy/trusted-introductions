@@ -77,6 +77,34 @@ function getOnboardingClient(): OnboardingSupabaseClient {
   return createClient() as unknown as OnboardingSupabaseClient;
 }
 
+function fromStoredProfileVisibility(visibility: string): PrivacySettings['profileVisibility'] {
+  if (visibility === 'public') {
+    return 'public';
+  }
+
+  if (visibility === 'community' || visibility === 'members') {
+    return 'members';
+  }
+
+  return 'private';
+}
+
+function fromStoredSensitiveVisibility(visibility: string): PrivacySettings['contactVisibility'] {
+  if (visibility === 'public' || visibility === 'introduction') {
+    return visibility;
+  }
+
+  if (visibility === 'stewards' || visibility === 'helpers') {
+    return 'helpers';
+  }
+
+  if (visibility === 'community' || visibility === 'members') {
+    return 'members';
+  }
+
+  return 'private';
+}
+
 function metadataString(metadata: TrustedIdentityRow['metadata'], key: string): string | null {
   if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
     return null;
@@ -161,9 +189,9 @@ async function loadPrivacySettings(
 
   return data
     ? {
-        profileVisibility: data.profile_visibility ?? undefined,
-        resumeVisibility: data.resume_visibility ?? undefined,
-        contactVisibility: data.contact_visibility ?? undefined,
+        profileVisibility: data.profile_visibility ? fromStoredProfileVisibility(data.profile_visibility) : undefined,
+        resumeVisibility: data.resume_visibility ? fromStoredSensitiveVisibility(data.resume_visibility) : undefined,
+        contactVisibility: data.contact_visibility ? fromStoredSensitiveVisibility(data.contact_visibility) : undefined,
         publicMeetPageEnabled: data.public_meet_page_enabled ?? undefined,
         helperActivityVisible: data.helper_activity_visible ?? undefined,
         allowAiSummary: data.allow_ai_summary ?? undefined,

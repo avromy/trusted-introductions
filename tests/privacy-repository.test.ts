@@ -23,6 +23,7 @@ function privacySettingsRow(overrides: Partial<PrivacySettingsRow> = {}): Privac
     resume_visibility: 'private',
     allow_ai_summary: false,
     public_meet_page_enabled: false,
+    helper_activity_visible: false,
     created_at: '2026-07-01T00:00:00.000Z',
     updated_at: '2026-07-01T00:00:00.000Z',
     ...overrides,
@@ -76,6 +77,7 @@ describe('privacy repository helpers', () => {
       resumeVisibility: 'members',
       allowAiSummary: true,
       publicMeetPageEnabled: true,
+      helperActivityVisible: false,
     });
     expect(calls.from).toHaveBeenCalledWith('privacy_settings');
     expect(calls.eq).toHaveBeenCalledWith('identity_id', IDENTITY_ID);
@@ -119,6 +121,7 @@ describe('privacy repository helpers', () => {
       resumeVisibility: 'members',
       allowAiSummary: true,
       publicMeetPageEnabled: true,
+      helperActivityVisible: false,
     });
     expect(calls.upsert).toHaveBeenCalledWith(
       {
@@ -128,6 +131,7 @@ describe('privacy repository helpers', () => {
         resume_visibility: 'community',
         allow_ai_summary: true,
         public_meet_page_enabled: true,
+        helper_activity_visible: false,
       },
       { onConflict: 'identity_id' },
     );

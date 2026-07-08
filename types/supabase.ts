@@ -3,6 +3,82 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export interface Database {
   public: {
     Tables: {
+      introductions: {
+        Row: {
+          id: string;
+          community_id: string | null;
+          requester_identity_id: string;
+          helper_identity_id: string;
+          recipient_identity_id: string;
+          status: Database['public']['Enums']['introduction_status'];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          community_id?: string | null;
+          requester_identity_id: string;
+          helper_identity_id: string;
+          recipient_identity_id: string;
+          status?: Database['public']['Enums']['introduction_status'];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          community_id?: string | null;
+          requester_identity_id?: string;
+          helper_identity_id?: string;
+          recipient_identity_id?: string;
+          status?: Database['public']['Enums']['introduction_status'];
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      introduction_follow_ups: {
+        Row: {
+          id: string;
+          introduction_id: string;
+          due_at: string;
+          status: Database['public']['Enums']['introduction_follow_up_status'];
+          note: string | null;
+          created_by_identity_id: string;
+          completed_at: string | null;
+          completed_by_identity_id: string | null;
+          skipped_at: string | null;
+          skipped_by_identity_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          introduction_id: string;
+          due_at: string;
+          status?: Database['public']['Enums']['introduction_follow_up_status'];
+          note?: string | null;
+          created_by_identity_id: string;
+          completed_at?: string | null;
+          completed_by_identity_id?: string | null;
+          skipped_at?: string | null;
+          skipped_by_identity_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          introduction_id?: string;
+          due_at?: string;
+          status?: Database['public']['Enums']['introduction_follow_up_status'];
+          note?: string | null;
+          created_by_identity_id?: string;
+          completed_at?: string | null;
+          completed_by_identity_id?: string | null;
+          skipped_at?: string | null;
+          skipped_by_identity_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       affiliations: {
         Row: {
           affiliation_type: Database['public']['Enums']['affiliation_type'];
@@ -65,6 +141,7 @@ export interface Database {
           identity_id: string;
           profile_visibility: Database['public']['Enums']['privacy_visibility'];
           public_meet_page_enabled: boolean;
+          helper_activity_visible: boolean;
           resume_visibility: Database['public']['Enums']['privacy_visibility'];
           updated_at: string;
         };
@@ -100,6 +177,8 @@ export interface Database {
     Enums: {
       affiliation_type: 'member' | 'alumni' | 'employee' | 'volunteer' | 'partner' | 'other';
       invitation_status: 'pending' | 'accepted' | 'expired' | 'revoked';
+      introduction_status: 'pending' | 'accepted' | 'declined' | 'completed' | 'canceled';
+      introduction_follow_up_status: 'pending' | 'completed' | 'skipped';
       invite_redemption_status: 'not_redeemed' | 'redeemed' | 'blocked';
       privacy_visibility: 'private' | 'community' | 'stewards';
       trusted_identity_status: 'pending' | 'active' | 'suspended' | 'archived';
