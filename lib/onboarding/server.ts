@@ -51,10 +51,12 @@ type ProfileRow = {
   identity_id?: string | null;
 };
 
+type StoredPrivacyVisibility = 'private' | 'community' | 'stewards';
+
 type PrivacySettingsRow = {
-  profile_visibility?: PrivacySettings['profileVisibility'] | null;
-  resume_visibility?: PrivacySettings['resumeVisibility'] | null;
-  contact_visibility?: PrivacySettings['contactVisibility'] | null;
+  profile_visibility?: StoredPrivacyVisibility | PrivacySettings['profileVisibility'] | null;
+  resume_visibility?: StoredPrivacyVisibility | PrivacySettings['resumeVisibility'] | null;
+  contact_visibility?: StoredPrivacyVisibility | PrivacySettings['contactVisibility'] | null;
   public_meet_page_enabled?: boolean | null;
   helper_activity_visible?: boolean | null;
   allow_ai_summary?: boolean | null;
@@ -143,6 +145,26 @@ async function loadProfile(
     : null;
 }
 
+function fromStoredProfileVisibility(
+  visibility: PrivacySettingsRow['profile_visibility'],
+): PrivacySettings['profileVisibility'] | undefined {
+  if (!visibility) return undefined;
+  return visibility === 'community'
+    ? 'members'
+    : visibility === 'private'
+      ? 'private'
+      : (visibility as PrivacySettings['profileVisibility']);
+}
+
+function fromStoredSensitiveVisibility(
+  visibility: PrivacySettingsRow['resume_visibility'],
+): PrivacySettings['resumeVisibility'] | undefined {
+  if (!visibility) return undefined;
+  if (visibility === 'stewards') return 'helpers';
+  if (visibility === 'community') return 'introduction';
+  return visibility as PrivacySettings['resumeVisibility'];
+}
+
 async function loadPrivacySettings(
   client: OnboardingSupabaseClient,
   identityId: string,
@@ -161,9 +183,9 @@ async function loadPrivacySettings(
 
   return data
     ? {
-        profileVisibility: data.profile_visibility ?? undefined,
-        resumeVisibility: data.resume_visibility ?? undefined,
-        contactVisibility: data.contact_visibility ?? undefined,
+        profileVisibility: fromStoredProfileVisibility(data.profile_visibility),
+        resumeVisibility: fromStoredSensitiveVisibility(data.resume_visibility),
+        contactVisibility: fromStoredSensitiveVisibility(data.contact_visibility),
         publicMeetPageEnabled: data.public_meet_page_enabled ?? undefined,
         helperActivityVisible: data.helper_activity_visible ?? undefined,
         allowAiSummary: data.allow_ai_summary ?? undefined,

@@ -19,8 +19,7 @@ const SENSITIVE_FIELD_VISIBILITY_VALUES = [
 export type SavePrivacySettingsInput = Partial<PrivacySettings> | null | undefined;
 
 export type SavePrivacySettingsActionResult =
-  | { ok: true; settings: PrivacySettings }
-  | { ok: false; error: string; settings: PrivacySettings };
+  { ok: true; settings: PrivacySettings } | { ok: false; error: string; settings: PrivacySettings };
 
 type PrivacySettingsMutationClient = SupabaseAuthClient & {
   from(table: 'audit_events'): {
@@ -35,6 +34,7 @@ type PrivacySettingsMutationClient = SupabaseAuthClient & {
         contact_visibility: Database['public']['Enums']['privacy_visibility'];
         public_meet_page_enabled: boolean;
         allow_ai_summary: boolean;
+        helper_activity_visible: boolean;
       },
       options: { onConflict: 'identity_id' },
     ): Promise<{ error: Error | null }>;
@@ -69,10 +69,7 @@ function normalizePrivacySettings(input: SavePrivacySettingsInput): {
     return { settings: defaults, error: null };
   }
 
-  if (
-    input.profileVisibility !== undefined &&
-    !isProfileVisibility(input.profileVisibility)
-  ) {
+  if (input.profileVisibility !== undefined && !isProfileVisibility(input.profileVisibility)) {
     return { settings: defaults, error: 'Invalid profile visibility value.' };
   }
 
@@ -80,7 +77,10 @@ function normalizePrivacySettings(input: SavePrivacySettingsInput): {
     return { settings: defaults, error: 'Invalid resume visibility value.' };
   }
 
-  if (input.contactVisibility !== undefined && !isSensitiveFieldVisibility(input.contactVisibility)) {
+  if (
+    input.contactVisibility !== undefined &&
+    !isSensitiveFieldVisibility(input.contactVisibility)
+  ) {
     return { settings: defaults, error: 'Invalid contact visibility value.' };
   }
 
@@ -128,10 +128,11 @@ export async function savePrivacySettingsAction(
 
   const now = new Date().toISOString();
   const { settings } = normalized;
-  const { error } = await supabase.from('privacy_settings').upsert(
-    createPrivacySettingsUpsertPayload(identityId, settings),
-    { onConflict: 'identity_id' },
-  );
+  const { error } = await supabase
+    .from('privacy_settings')
+    .upsert(createPrivacySettingsUpsertPayload(identityId, settings), {
+      onConflict: 'identity_id',
+    });
 
   if (error) {
     throw error;

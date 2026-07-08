@@ -33,6 +33,7 @@ export type PrivacySettingsUpsertPayload = {
   resume_visibility: StoredPrivacyVisibility;
   allow_ai_summary: boolean;
   public_meet_page_enabled: boolean;
+  helper_activity_visible: boolean;
 };
 
 export type PrivacySettingsSupabaseClient = {
@@ -108,6 +109,7 @@ export function createPrivacySettingsUpsertPayload(
     resume_visibility: toStoredVisibility(merged.resumeVisibility),
     allow_ai_summary: merged.allowAiSummary,
     public_meet_page_enabled: merged.publicMeetPageEnabled,
+    helper_activity_visible: merged.helperActivityVisible,
   };
 }
 
