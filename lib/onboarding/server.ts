@@ -1,6 +1,7 @@
 import { requireCurrentUser } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { calculateOnboardingProgress } from '@/lib/onboarding';
+import { mapPrivacySettingsRow } from '@/lib/privacy/repository';
 
 import type { AuthUser } from '@/lib/auth/session';
 import type {
@@ -159,16 +160,32 @@ async function loadPrivacySettings(
     throw new Error(error.message ?? 'Unable to load onboarding privacy settings.');
   }
 
-  return data
-    ? {
-        profileVisibility: data.profile_visibility ?? undefined,
-        resumeVisibility: data.resume_visibility ?? undefined,
-        contactVisibility: data.contact_visibility ?? undefined,
-        publicMeetPageEnabled: data.public_meet_page_enabled ?? undefined,
-        helperActivityVisible: data.helper_activity_visible ?? undefined,
-        allowAiSummary: data.allow_ai_summary ?? undefined,
-      }
-    : null;
+  if (!data) {
+    return null;
+  }
+
+  const storedVisibilityValues = [
+    data.profile_visibility,
+    data.resume_visibility,
+    data.contact_visibility,
+  ].map((value) => String(value ?? ''));
+
+  if (storedVisibilityValues.some((value) => value === 'community' || value === 'stewards')) {
+    return mapPrivacySettingsRow(data as never);
+  }
+
+  return {
+    profileVisibility: data.profile_visibility ?? undefined,
+    resumeVisibility: data.resume_visibility ?? undefined,
+    contactVisibility: data.contact_visibility ?? undefined,
+    publicMeetPageEnabled: data.public_meet_page_enabled ?? undefined,
+    helperActivityVisible: data.helper_activity_visible ?? true,
+    allowAiSummary: data.allow_ai_summary ?? undefined,
+  };
+}
+
+function normalizeInviteLookupEmail(email: string | null | undefined): string {
+  return email?.trim().toLowerCase() ?? '';
 }
 
 async function loadInvite(
@@ -176,6 +193,7 @@ async function loadInvite(
   user: AuthUser,
   identityId?: string,
 ): Promise<InviteState | null> {
+  const inviteeEmail = normalizeInviteLookupEmail(user.email);
   const query = client
     .from<InvitationRow>('invitations')
     .select('status,expires_at')
@@ -183,8 +201,8 @@ async function loadInvite(
     .limit(1);
 
   const filteredQuery = identityId
-    ? query.or(`redeemed_by_identity_id.eq.${identityId},invitee_email.eq.${user.email ?? ''}`)
-    : query.eq('invitee_email', user.email ?? '');
+    ? query.or(`redeemed_by_identity_id.eq.${identityId},invitee_email.eq.${inviteeEmail}`)
+    : query.eq('invitee_email', inviteeEmail);
 
   const { data, error } = await filteredQuery.maybeSingle();
 

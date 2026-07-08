@@ -34,6 +34,7 @@ type PrivacySettingsMutationClient = SupabaseAuthClient & {
         resume_visibility: Database['public']['Enums']['privacy_visibility'];
         contact_visibility: Database['public']['Enums']['privacy_visibility'];
         public_meet_page_enabled: boolean;
+        helper_activity_visible?: boolean;
         allow_ai_summary: boolean;
       },
       options: { onConflict: 'identity_id' },
