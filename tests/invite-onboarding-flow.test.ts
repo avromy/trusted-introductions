@@ -304,7 +304,7 @@ describe('invite to onboarding integration flow', () => {
       savePrivacySettingsAction({
         profileVisibility: 'members',
         resumeVisibility: 'helpers',
-        contactVisibility: 'introduction',
+        contactVisibility: 'members',
         publicMeetPageEnabled: false,
         helperActivityVisible: true,
         allowAiSummary: false,
@@ -314,7 +314,7 @@ describe('invite to onboarding integration flow', () => {
       settings: {
         profileVisibility: 'members',
         resumeVisibility: 'helpers',
-        contactVisibility: 'introduction',
+        contactVisibility: 'members',
         publicMeetPageEnabled: false,
         helperActivityVisible: true,
         allowAiSummary: false,
@@ -339,7 +339,7 @@ describe('invite to onboarding integration flow', () => {
       privacySettings: {
         profileVisibility: 'members',
         resumeVisibility: 'helpers',
-        contactVisibility: 'introduction',
+        contactVisibility: 'members',
         publicMeetPageEnabled: false,
         helperActivityVisible: true,
         allowAiSummary: false,
