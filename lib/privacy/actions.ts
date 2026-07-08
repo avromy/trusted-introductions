@@ -1,10 +1,11 @@
 import { createAuditEventPayload, insertAuditEvent } from '@/lib/audit';
 import { requireCurrentIdentity } from '@/lib/auth/session';
-import { getDefaultPrivacySettings } from '@/lib/privacy';
+import { createPrivacySettingsUpsertPayload, getDefaultPrivacySettings } from '@/lib/privacy';
 import { createClient } from '@/lib/supabase/server';
 
 import type { AuthIdentity, SupabaseAuthClient } from '@/lib/auth/session';
 import type { PrivacySettings, ProfileVisibility, SensitiveFieldVisibility } from '@/types/privacy';
+import type { Database } from '@/types/supabase';
 
 const PROFILE_VISIBILITY_VALUES = ['private', 'members', 'public'] as const;
 const SENSITIVE_FIELD_VISIBILITY_VALUES = [
@@ -29,13 +30,11 @@ type PrivacySettingsMutationClient = SupabaseAuthClient & {
     upsert(
       payload: {
         identity_id: string;
-        profile_visibility: ProfileVisibility;
-        resume_visibility: SensitiveFieldVisibility;
-        contact_visibility: SensitiveFieldVisibility;
+        profile_visibility: Database['public']['Enums']['privacy_visibility'];
+        resume_visibility: Database['public']['Enums']['privacy_visibility'];
+        contact_visibility: Database['public']['Enums']['privacy_visibility'];
         public_meet_page_enabled: boolean;
-        helper_activity_visible: boolean;
         allow_ai_summary: boolean;
-        updated_at: string;
       },
       options: { onConflict: 'identity_id' },
     ): Promise<{ error: Error | null }>;
@@ -130,16 +129,7 @@ export async function savePrivacySettingsAction(
   const now = new Date().toISOString();
   const { settings } = normalized;
   const { error } = await supabase.from('privacy_settings').upsert(
-    {
-      identity_id: identityId,
-      profile_visibility: settings.profileVisibility,
-      resume_visibility: settings.resumeVisibility,
-      contact_visibility: settings.contactVisibility,
-      public_meet_page_enabled: settings.publicMeetPageEnabled,
-      helper_activity_visible: settings.helperActivityVisible,
-      allow_ai_summary: settings.allowAiSummary,
-      updated_at: now,
-    },
+    createPrivacySettingsUpsertPayload(identityId, settings),
     { onConflict: 'identity_id' },
   );
 

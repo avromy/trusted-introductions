@@ -81,7 +81,6 @@ describe('savePrivacySettingsAction', () => {
         resume_visibility: 'private',
         contact_visibility: 'private',
         public_meet_page_enabled: false,
-        helper_activity_visible: false,
         allow_ai_summary: true,
       }),
       { onConflict: 'identity_id' },
