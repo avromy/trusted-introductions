@@ -83,6 +83,33 @@ export interface MatchSuggestionInput {
   reasons: string[];
   metadata?: import('./supabase').Json;
 }
+
+export const STEWARD_REVIEW_STATUS_VALUES = ['pending', 'approved', 'rejected', 'needs_info'] as const;
+
+export type StewardReviewStatus = (typeof STEWARD_REVIEW_STATUS_VALUES)[number];
+
+export interface StewardReview {
+  id: string;
+  requestId: string;
+  stewardIdentityId: string;
+  subjectIdentityId: string;
+  matchSuggestionId?: string | null;
+  status: StewardReviewStatus;
+  decisionReason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  decidedAt?: string | null;
+}
+
+export interface StewardReviewInput {
+  requestId: string;
+  stewardIdentityId: string;
+  subjectIdentityId: string;
+  matchSuggestionId?: string | null;
+  status?: StewardReviewStatus;
+  decisionReason?: string | null;
+}
+
 export type HelperAvailability = 'available' | 'limited' | 'unavailable';
 
 export interface MatchingRequest {

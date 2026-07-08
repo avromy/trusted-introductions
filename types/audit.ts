@@ -11,6 +11,10 @@ export const AUDIT_EVENT_TYPES = [
   'job_seeker_request.created',
   'helper_capability.upserted',
   'match_suggestions.recalculated',
+  'steward_review.created',
+  'steward_review.approved',
+  'steward_review.rejected',
+  'steward_review.needs_info',
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
