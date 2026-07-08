@@ -3,6 +3,7 @@ import { calculateOnboardingProgress } from '@/lib/onboarding';
 import { createClient } from '@/lib/supabase/server';
 import type { Database, Json } from '@/types/supabase';
 import { OnboardingShell } from '../_components/onboarding-shell';
+import { submitOnboardingRoleAction } from './actions';
 import { onboardingSteps } from '../steps';
 
 type TrustedIdentityRow = Database['public']['Tables']['trusted_identities']['Row'];
@@ -145,8 +146,12 @@ async function loadRolePageState(): Promise<RolePageState> {
   };
 }
 
-export default async function RoleOnboardingPage() {
-  const state = await loadRolePageState();
+type RoleOnboardingPageProps = {
+  searchParams?: Promise<{ saved?: string; error?: string }>;
+};
+
+export default async function RoleOnboardingPage({ searchParams }: RoleOnboardingPageProps) {
+  const [state, params] = await Promise.all([loadRolePageState(), searchParams]);
   const currentRoles = state.roles.map((role) => role.role);
   const progress = calculateOnboardingProgress({
     invite: state.invite
@@ -191,7 +196,7 @@ export default async function RoleOnboardingPage() {
     <OnboardingShell
       badge="Member role"
       title="Choose how you expect to participate"
-      description="This step now reads your onboarding state so you can preview role and contribution status before role-saving actions are available."
+      description="This step saves how you expect to participate so your onboarding progress can move to profile setup."
       currentHref="/onboarding/role"
       steps={[...onboardingSteps]}
       previousHref="/onboarding/invite"
@@ -224,25 +229,55 @@ export default async function RoleOnboardingPage() {
           </dl>
           <p className="mt-4 text-sm text-ink/65">
             Onboarding progress is currently{' '}
-            <span className="font-semibold text-trust">{formatValue(progress.step)}</span>; this
-            page does not redirect or save changes.
+            <span className="font-semibold text-trust">{formatValue(progress.step)}</span>.
           </p>
           {state.loadError ? (
             <p className="mt-3 text-sm font-medium text-rust">{state.loadError}</p>
           ) : null}
+          {params?.saved === '1' ? (
+            <p className="mt-3 text-sm font-medium text-trust">Your role preferences were saved.</p>
+          ) : null}
+          {params?.error ? (
+            <p className="mt-3 text-sm font-medium text-rust">{params.error}</p>
+          ) : null}
         </Card>
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          {roleOptions.map((role) => (
-            <Card key={role.label} className="bg-cream p-5 text-center shadow-none">
-              <p className="text-sm font-semibold text-trust">{role.label}</p>
-              <p className="mt-2 text-xs leading-5 text-ink/60">{role.description}</p>
-              <p className="mt-4 rounded-full bg-white px-3 py-2 text-xs font-semibold text-ink/50 ring-1 ring-black/5">
-                Placeholder only
-              </p>
-            </Card>
-          ))}
-        </div>
+        <form action={submitOnboardingRoleAction} className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            {roleOptions.map((role) => {
+              const value = role.label.toLowerCase().replace(/ /g, '_');
+              const selected = state.contributionMode === value;
+
+              return (
+                <Card key={role.label} className="bg-cream p-5 text-center shadow-none">
+                  <label className="block cursor-pointer">
+                    <input
+                      type="radio"
+                      name="contributionMode"
+                      value={value}
+                      defaultChecked={selected}
+                      className="sr-only peer"
+                      required
+                    />
+                    <span className="text-sm font-semibold text-trust">{role.label}</span>
+                    <span className="mt-2 block text-xs leading-5 text-ink/60">
+                      {role.description}
+                    </span>
+                    <span className="mt-4 block rounded-full bg-white px-3 py-2 text-xs font-semibold text-ink/50 ring-1 ring-black/5 peer-checked:text-trust peer-checked:ring-trust/40">
+                      {selected ? 'Selected' : 'Select'}
+                    </span>
+                  </label>
+                </Card>
+              );
+            })}
+          </div>
+          <button
+            type="submit"
+            className="rounded-full bg-trust px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-trust/90"
+          >
+            Save role preferences
+          </button>
+        </form>
       </div>
     </OnboardingShell>
   );
