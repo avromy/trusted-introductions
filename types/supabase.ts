@@ -101,6 +101,20 @@ export interface Database {
           work_authorization: string | null;
         };
       };
+      match_suggestions: {
+        Row: {
+          created_at: string;
+          helper_identity_id: string;
+          id: string;
+          match_explanation: Json;
+          match_score: number;
+          request_id: string;
+          reviewed_at: string | null;
+          status: Database['public']['Enums']['steward_match_review_status'];
+          steward_review_id: string | null;
+          updated_at: string;
+        };
+      };
       privacy_settings: {
         Row: {
           allow_ai_summary: boolean;
@@ -112,6 +126,20 @@ export interface Database {
           profile_visibility: Database['public']['Enums']['privacy_visibility'];
           public_meet_page_enabled: boolean;
           resume_visibility: Database['public']['Enums']['privacy_visibility'];
+          updated_at: string;
+        };
+      };
+      steward_reviews: {
+        Row: {
+          created_at: string;
+          decided_at: string | null;
+          decision_reason: string | null;
+          id: string;
+          match_suggestion_id: string;
+          request_id: string;
+          status: Database['public']['Enums']['steward_match_review_status'];
+          steward_identity_id: string;
+          subject_identity_id: string;
           updated_at: string;
         };
       };
@@ -149,6 +177,7 @@ export interface Database {
       job_seeker_request_status: 'draft' | 'open' | 'paused' | 'matched' | 'closed' | 'withdrawn';
       invite_redemption_status: 'not_redeemed' | 'redeemed' | 'blocked';
       privacy_visibility: 'private' | 'community' | 'stewards';
+      steward_match_review_status: 'pending' | 'approved' | 'rejected' | 'needs_info';
       trusted_identity_status: 'pending' | 'active' | 'suspended' | 'archived';
       user_role_name: 'member' | 'steward' | 'admin';
     };
