@@ -189,3 +189,8 @@ export function calculateOnboardingProgress(input: OnboardingStateInput = {}): O
     checks,
   };
 }
+export {
+  saveOnboardingRoleAction,
+  type SaveOnboardingRoleActionResult,
+  type SaveOnboardingRoleInput,
+} from './role-actions';
