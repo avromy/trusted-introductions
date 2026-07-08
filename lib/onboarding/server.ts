@@ -52,9 +52,9 @@ type ProfileRow = {
 };
 
 type PrivacySettingsRow = {
-  profile_visibility?: PrivacySettings['profileVisibility'] | null;
-  resume_visibility?: PrivacySettings['resumeVisibility'] | null;
-  contact_visibility?: PrivacySettings['contactVisibility'] | null;
+  profile_visibility?: Database['public']['Enums']['privacy_visibility'] | null;
+  resume_visibility?: Database['public']['Enums']['privacy_visibility'] | null;
+  contact_visibility?: Database['public']['Enums']['privacy_visibility'] | null;
   public_meet_page_enabled?: boolean | null;
   helper_activity_visible?: boolean | null;
   allow_ai_summary?: boolean | null;
@@ -75,6 +75,42 @@ export type CurrentOnboardingProgress = OnboardingProgress & {
 
 function getOnboardingClient(): OnboardingSupabaseClient {
   return createClient() as unknown as OnboardingSupabaseClient;
+}
+
+function fromStoredProfileVisibility(
+  visibility: unknown,
+): PrivacySettings['profileVisibility'] | undefined {
+  if (!visibility) {
+    return undefined;
+  }
+
+  if (visibility === 'community' || visibility === 'members' || visibility === 'public') {
+    return visibility === 'community' ? 'members' : visibility;
+  }
+
+  return 'private';
+}
+
+function fromStoredSensitiveVisibility(
+  visibility: unknown,
+): PrivacySettings['contactVisibility'] | undefined {
+  if (!visibility) {
+    return undefined;
+  }
+
+  if (visibility === 'stewards' || visibility === 'helpers') {
+    return 'helpers';
+  }
+
+  if (visibility === 'community' || visibility === 'members' || visibility === 'public') {
+    return visibility === 'community' ? 'members' : visibility;
+  }
+
+  if (visibility === 'introduction') {
+    return 'introduction';
+  }
+
+  return 'private';
 }
 
 function metadataString(metadata: TrustedIdentityRow['metadata'], key: string): string | null {
@@ -161,9 +197,9 @@ async function loadPrivacySettings(
 
   return data
     ? {
-        profileVisibility: data.profile_visibility ?? undefined,
-        resumeVisibility: data.resume_visibility ?? undefined,
-        contactVisibility: data.contact_visibility ?? undefined,
+        profileVisibility: fromStoredProfileVisibility(data.profile_visibility),
+        resumeVisibility: fromStoredSensitiveVisibility(data.resume_visibility),
+        contactVisibility: fromStoredSensitiveVisibility(data.contact_visibility),
         publicMeetPageEnabled: data.public_meet_page_enabled ?? undefined,
         helperActivityVisible: data.helper_activity_visible ?? undefined,
         allowAiSummary: data.allow_ai_summary ?? undefined,

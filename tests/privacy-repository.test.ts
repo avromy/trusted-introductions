@@ -22,6 +22,7 @@ function privacySettingsRow(overrides: Partial<PrivacySettingsRow> = {}): Privac
     contact_visibility: 'private',
     resume_visibility: 'private',
     allow_ai_summary: false,
+    helper_activity_visible: false,
     public_meet_page_enabled: false,
     created_at: '2026-07-01T00:00:00.000Z',
     updated_at: '2026-07-01T00:00:00.000Z',
@@ -66,6 +67,7 @@ describe('privacy repository helpers', () => {
         resume_visibility: 'community',
         allow_ai_summary: true,
         public_meet_page_enabled: true,
+        helper_activity_visible: false,
       }),
     });
 
@@ -102,6 +104,7 @@ describe('privacy repository helpers', () => {
         resume_visibility: 'community',
         allow_ai_summary: true,
         public_meet_page_enabled: true,
+        helper_activity_visible: false,
       }),
     });
 
@@ -128,6 +131,7 @@ describe('privacy repository helpers', () => {
         resume_visibility: 'community',
         allow_ai_summary: true,
         public_meet_page_enabled: true,
+        helper_activity_visible: false,
       },
       { onConflict: 'identity_id' },
     );

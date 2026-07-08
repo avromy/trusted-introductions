@@ -40,6 +40,23 @@ export interface Database {
           updated_at: string;
         };
       };
+      helper_capabilities: {
+        Row: {
+          availability_status: 'available' | 'limited' | 'unavailable';
+          categories: Json;
+          created_at: string;
+          geographies: Json;
+          id: string;
+          identity_id: string;
+          industries: Json;
+          languages: Json;
+          next_available_at: string | null;
+          private_notes: string | null;
+          updated_at: string;
+          visibility: Database['public']['Enums']['privacy_visibility'];
+          weekly_intro_capacity: number;
+        };
+      };
       invitations: {
         Row: {
           community_id: string | null;
@@ -59,6 +76,7 @@ export interface Database {
       privacy_settings: {
         Row: {
           allow_ai_summary: boolean;
+          helper_activity_visible: boolean;
           contact_visibility: Database['public']['Enums']['privacy_visibility'];
           created_at: string;
           id: string;
