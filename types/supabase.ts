@@ -101,6 +101,20 @@ export interface Database {
           work_authorization: string | null;
         };
       };
+      match_suggestions: {
+        Row: {
+          created_at: string;
+          helper_capability_id: string;
+          helper_identity_id: string;
+          id: string;
+          metadata: Json;
+          rank: number;
+          reasons: string[];
+          request_id: string;
+          score: number;
+          updated_at: string;
+        };
+      };
       privacy_settings: {
         Row: {
           allow_ai_summary: boolean;
