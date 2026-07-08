@@ -9,6 +9,8 @@ export const AUDIT_EVENT_TYPES = [
   'onboarding.completed',
   'privacy_settings.updated',
   'job_seeker_request.created',
+  'introduction.created',
+  'introduction.sent',
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
