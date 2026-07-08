@@ -8,7 +8,7 @@ The product is **not** a recruiting platform, job board, or applicant tracking s
 
 ## Current Repository Status
 
-The engineering source of truth lives in [`/docs`](docs/). M1 adds a runnable Next.js App Router foundation with TypeScript, Tailwind CSS, ESLint, Prettier, Vitest, and Supabase configuration. Business workflows are intentionally placeholder-only until later milestones.
+The engineering source of truth lives in [`/docs`](docs/). The repository now has the MVP core reconciled: M1 foundation, M2 invite-only onboarding, M3 matching foundation, and M4 introduction/follow-up/outcome coverage are complete for MVP. Production hardening remains before broad rollout.
 
 ## Stack
 
@@ -51,7 +51,7 @@ npm run format:check # verify Prettier formatting
 
 ## Supabase
 
-Supabase project configuration is in [`supabase/config.toml`](supabase/config.toml). The initial foundation migration enables `pgcrypto` and creates a private `private-resumes` storage bucket without adding business-domain tables.
+Supabase project configuration is in [`supabase/config.toml`](supabase/config.toml). The initial foundation migration enables `pgcrypto` and creates a private `private-resumes` storage bucket. Additive MVP migrations/types cover invite-only onboarding and seeker request persistence; remaining production workflow tables are documented as hardening work.
 
 Apply migrations with the Supabase CLI when a local project is running:
 
