@@ -56,6 +56,31 @@ export interface Database {
           updated_at: string;
         };
       };
+      helper_capabilities: {
+        Row: {
+          availability_status: 'available' | 'limited' | 'unavailable';
+          categories: Array<
+            | 'career_navigation'
+            | 'resume_review'
+            | 'interview_practice'
+            | 'network_introduction'
+            | 'industry_insight'
+            | 'portfolio_review'
+            | 'accountability'
+            | 'resource_navigation'
+          >;
+          created_at: string;
+          geographies: string[];
+          id: string;
+          identity_id: string;
+          industries: string[];
+          languages: string[];
+          next_available_at: string | null;
+          private_notes: string | null;
+          updated_at: string;
+          weekly_intro_capacity: number;
+        };
+      };
       job_seeker_requests: {
         Row: {
           closed_at: string | null;
