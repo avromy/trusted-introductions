@@ -51,3 +51,11 @@ export {
   type UpdateInviteRedeemedRepositoryInput,
   type UpdateInviteRevokedRepositoryInput,
 } from './repository';
+
+export {
+  canCreateInvite,
+  canListInvitesForCommunity,
+  canRevokeInvite,
+  type InviteAdministrationIdentity,
+  type InviteAdministrationInvite,
+} from './authorization';
