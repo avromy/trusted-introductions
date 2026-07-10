@@ -7,7 +7,7 @@ export default defineConfig({
         jsx: 'react-jsx',
       },
     },
-  },
+  } as Record<string, unknown>,
   test: {
     environment: 'node',
     globals: true,
