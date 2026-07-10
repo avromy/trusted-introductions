@@ -8,7 +8,7 @@ afterEach(() => vi.unstubAllEnvs());
 describe('health route', () => {
   it('returns a successful no-store health response', async () => {
     vi.stubEnv('VERCEL_ENV', 'production');
-    const response = await GET();
+    const response = await GET(new Request('http://localhost/api/health'));
     const body = await response.json();
     expect(response.status).toBe(200);
     expect(response.headers.get('Cache-Control')).toBe('no-store');
