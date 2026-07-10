@@ -100,7 +100,7 @@ export function HelperCapabilitiesForm() {
   );
 
   return (
-    <form action={formAction} className="mt-8 space-y-8">
+    <form action={formAction} className="mt-8 space-y-8" data-testid="helper-capabilities-form">
       <fieldset className="space-y-3">
         <div>
           <legend className="text-base font-semibold text-ink">How you can help</legend>
@@ -116,6 +116,7 @@ export function HelperCapabilitiesForm() {
             >
               <input
                 className="mt-1 h-4 w-4 accent-trust"
+                data-testid={`helper-capability-category-${category}`}
                 type="checkbox"
                 name="categories"
                 value={category}
@@ -137,6 +138,7 @@ export function HelperCapabilitiesForm() {
             Availability
             <select
               className="mt-2 h-12 w-full rounded-2xl border border-trust/15 bg-white px-4 text-sm outline-none focus:border-trust focus:ring-4 focus:ring-trust/10"
+              data-testid="helper-capability-availability"
               name="availabilityStatus"
               defaultValue="limited"
             >
@@ -151,6 +153,7 @@ export function HelperCapabilitiesForm() {
             Weekly intro capacity
             <Input
               className="mt-2"
+              data-testid="helper-capability-weekly-capacity"
               min={0}
               name="weeklyIntroCapacity"
               type="number"
@@ -163,7 +166,12 @@ export function HelperCapabilitiesForm() {
         </div>
         <label className="mt-5 block text-sm font-semibold text-ink">
           Next available date
-          <Input className="mt-2" name="nextAvailableAt" type="date" />
+          <Input
+            className="mt-2"
+            data-testid="helper-capability-next-available-at"
+            name="nextAvailableAt"
+            type="date"
+          />
           <span className="mt-1 block text-xs font-normal text-ink/60">
             Optional. Helpful when you are limited or unavailable.
           </span>
@@ -182,15 +190,30 @@ export function HelperCapabilitiesForm() {
         <div className="grid gap-4 sm:grid-cols-3">
           <label className="block text-sm font-semibold text-ink">
             Industries
-            <Input className="mt-2" name="industries" placeholder="Fintech, climate" />
+            <Input
+              className="mt-2"
+              data-testid="helper-capability-industries"
+              name="industries"
+              placeholder="Fintech, climate"
+            />
           </label>
           <label className="block text-sm font-semibold text-ink">
             Geographies
-            <Input className="mt-2" name="geographies" placeholder="US, Canada, remote" />
+            <Input
+              className="mt-2"
+              data-testid="helper-capability-geographies"
+              name="geographies"
+              placeholder="US, Canada, remote"
+            />
           </label>
           <label className="block text-sm font-semibold text-ink">
             Languages
-            <Input className="mt-2" name="languages" placeholder="English, Spanish" />
+            <Input
+              className="mt-2"
+              data-testid="helper-capability-languages"
+              name="languages"
+              placeholder="English, Spanish"
+            />
           </label>
         </div>
       </section>
@@ -208,6 +231,7 @@ export function HelperCapabilitiesForm() {
         </span>
         <textarea
           className="mt-3 min-h-32 w-full rounded-2xl border border-trust/15 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-ink/40 focus:border-trust focus:ring-4 focus:ring-trust/10"
+          data-testid="helper-capability-private-notes"
           name="privateNotes"
           placeholder="Constraints, sensitive context, or preferences for steward review only."
         />

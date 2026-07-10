@@ -155,7 +155,7 @@ export function JobSeekerRequestForm() {
         </div>
       ) : null}
 
-      <form action={formAction} className="space-y-8" noValidate>
+      <form action={formAction} className="space-y-8" data-testid="seeker-request-form" noValidate>
         <input type="hidden" name="status" value="open" />
         {fieldSections.map((section) => (
           <section
@@ -179,6 +179,7 @@ export function JobSeekerRequestForm() {
                     aria-describedby={`${field.name}-helper`}
                     aria-invalid={Boolean(formErrors[field.name]?.length)}
                     className="mt-2"
+                    data-testid={`seeker-request-${field.name}`}
                     name={field.name}
                     placeholder={field.placeholder}
                     required={'required' in field && field.required}
@@ -199,6 +200,7 @@ export function JobSeekerRequestForm() {
             <textarea
               aria-describedby="notes-helper"
               className="mt-2 min-h-32 w-full rounded-2xl border border-trust/15 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-ink/40 focus:border-trust focus:ring-4 focus:ring-trust/10"
+              data-testid="seeker-request-notes"
               name="notes"
               placeholder="Add goals, constraints, and any sensitive context the steward should know."
             />
