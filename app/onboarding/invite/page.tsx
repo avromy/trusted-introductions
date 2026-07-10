@@ -179,9 +179,10 @@ async function validateInviteToken(token: string | null): Promise<InvitePageStat
 export default async function InviteOnboardingPage({
   searchParams,
 }: {
-  searchParams?: InviteSearchParams;
+  searchParams?: Promise<InviteSearchParams>;
 }) {
-  const inviteState = await validateInviteToken(readToken(searchParams));
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const inviteState = await validateInviteToken(readToken(resolvedSearchParams));
   const currentUser = inviteState.valid ? await getCurrentUser() : null;
   const pageState: InvitePageState =
     inviteState.valid && currentUser === null
