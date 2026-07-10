@@ -3,8 +3,8 @@ import { calculateOnboardingProgress } from '@/lib/onboarding';
 import { createClient } from '@/lib/supabase/server';
 import type { Database, Json } from '@/types/supabase';
 import { OnboardingShell } from '../_components/onboarding-shell';
-import { submitOnboardingRoleAction } from './actions';
 import { onboardingSteps } from '../steps';
+import { submitOnboardingRoleAction } from './actions';
 
 type TrustedIdentityRow = Database['public']['Tables']['trusted_identities']['Row'];
 type UserRoleRow = Database['public']['Tables']['user_roles']['Row'];
@@ -22,16 +22,28 @@ type RolePageState = {
 
 const roleOptions = [
   {
-    label: 'Seeking support',
-    description: 'For members who expect to request warm introductions or career help.',
+    value: 'helper',
+    label: 'Helper',
+    eyebrow: 'Offer warm introductions',
+    description:
+      'Share context, referrals, or advice when you have a relevant relationship and consent to help.',
+    outcomes: ['Be discoverable as a potential helper', 'Keep control over which requests you accept'],
   },
   {
-    label: 'Offering help',
-    description: 'For members who expect to share advice, referrals, or community access.',
+    value: 'job_seeker',
+    label: 'Job seeker',
+    eyebrow: 'Ask for support',
+    description:
+      'Request trusted introductions, career advice, and company context from members who can help.',
+    outcomes: ['Set up a profile for targeted asks', 'Make it clear what support would be useful'],
   },
   {
+    value: 'both',
     label: 'Both',
-    description: 'For members who expect to ask for support and help others over time.',
+    eyebrow: 'Give and receive help',
+    description:
+      'Use Trusted Introductions as a two-way network: ask for support when needed and help others when you can.',
+    outcomes: ['Move through seeker and helper flows', 'Update your preference later as your needs change'],
   },
 ] as const;
 
@@ -67,7 +79,7 @@ async function loadRolePageState(): Promise<RolePageState> {
       invite: null,
       privacySettings: null,
       loadError:
-        'We could not load your signed-in user yet. The controls below remain previews only.',
+        'We could not confirm your signed-in user yet. Refresh, then try saving again.',
     };
   }
 
@@ -141,7 +153,7 @@ async function loadRolePageState(): Promise<RolePageState> {
     privacySettings: privacyResult.data as PrivacySettingsRow | null,
     loadError:
       rolesResult.error || privacyResult.error
-        ? 'Some onboarding details could not be loaded yet.'
+        ? 'Some saved onboarding details could not be loaded. You can still choose and save your role.'
         : null,
   };
 }
@@ -153,6 +165,7 @@ type RoleOnboardingPageProps = {
 export default async function RoleOnboardingPage({ searchParams }: RoleOnboardingPageProps) {
   const [state, params] = await Promise.all([loadRolePageState(), searchParams]);
   const currentRoles = state.roles.map((role) => role.role);
+  const canSubmit = Boolean(state.identity && state.identity.status === 'active');
   const progress = calculateOnboardingProgress({
     invite: state.invite
       ? {
@@ -194,9 +207,9 @@ export default async function RoleOnboardingPage({ searchParams }: RoleOnboardin
 
   return (
     <OnboardingShell
-      badge="Member role"
-      title="Choose how you expect to participate"
-      description="This step saves how you expect to participate so your onboarding progress can move to profile setup."
+      badge="Contribution mode"
+      title="Choose how you want to participate"
+      description="Tell the community whether you want to help, seek help, or do both. We will save the member role and your contribution mode without changing the rest of onboarding."
       currentHref="/onboarding/role"
       steps={[...onboardingSteps]}
       previousHref="/onboarding/invite"
@@ -206,65 +219,102 @@ export default async function RoleOnboardingPage({ searchParams }: RoleOnboardin
     >
       <div className="space-y-5">
         <Card className="bg-cream p-5 shadow-none">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-trust/70">
-            Current state
-          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-trust/70">
+                Current state
+              </p>
+              <h2 className="mt-2 text-xl font-bold text-ink">Your saved participation settings</h2>
+            </div>
+            <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-bold text-trust ring-1 ring-trust/15">
+              {roleStatus}
+            </span>
+          </div>
           <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
             <div>
-              <dt className="font-semibold text-ink">Role status</dt>
-              <dd className="mt-1 text-ink/70">{roleStatus}</dd>
-            </div>
-            <div>
-              <dt className="font-semibold text-ink">Saved roles</dt>
+              <dt className="font-semibold text-ink">Saved role</dt>
               <dd className="mt-1 text-ink/70">
-                {currentRoles.length ? currentRoles.map(formatValue).join(', ') : 'None yet'}
+                {currentRoles.length ? currentRoles.map(formatValue).join(', ') : 'Not saved yet'}
               </dd>
             </div>
             <div>
               <dt className="font-semibold text-ink">Contribution mode</dt>
               <dd className="mt-1 text-ink/70">
-                {state.contributionMode ? formatValue(state.contributionMode) : 'None yet'}
+                {state.contributionMode ? formatValue(state.contributionMode) : 'Not chosen yet'}
               </dd>
             </div>
+            <div>
+              <dt className="font-semibold text-ink">Next onboarding step</dt>
+              <dd className="mt-1 text-ink/70">{formatValue(progress.step)}</dd>
+            </div>
           </dl>
-          <p className="mt-4 text-sm text-ink/65">
-            Onboarding progress is currently{' '}
-            <span className="font-semibold text-trust">{formatValue(progress.step)}</span>.
-          </p>
+          {!state.identity ? (
+            <p className="mt-4 rounded-2xl bg-white p-3 text-sm font-medium text-ink/70 ring-1 ring-black/5">
+              Create or accept your invite first so we can attach this choice to your trusted identity.
+            </p>
+          ) : null}
+          {state.identity && state.identity.status !== 'active' ? (
+            <p className="mt-4 rounded-2xl bg-white p-3 text-sm font-medium text-rust ring-1 ring-rust/15">
+              Your trusted identity is not active yet, so role preferences cannot be saved.
+            </p>
+          ) : null}
           {state.loadError ? (
-            <p className="mt-3 text-sm font-medium text-rust">{state.loadError}</p>
+            <p className="mt-3 text-sm font-medium text-rust" role="alert">
+              {state.loadError}
+            </p>
           ) : null}
           {params?.saved === '1' ? (
-            <p className="mt-3 text-sm font-medium text-trust">Your role preferences were saved.</p>
+            <p className="mt-3 text-sm font-medium text-trust" role="status">
+              Your role preferences were saved.
+            </p>
           ) : null}
           {params?.error ? (
-            <p className="mt-3 text-sm font-medium text-rust">{params.error}</p>
+            <p className="mt-3 text-sm font-medium text-rust" role="alert">
+              {params.error}
+            </p>
           ) : null}
         </Card>
 
-        <form action={submitOnboardingRoleAction} className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
+        <form action={submitOnboardingRoleAction} className="space-y-4" aria-describedby="role-help">
+          <div id="role-help" className="rounded-3xl bg-sage/40 p-5 text-sm leading-6 text-ink/75">
+            Pick the mode that best matches your current intent. Helper means you are open to
+            assisting others, job seeker means you expect to request introductions or career help,
+            and both keeps both paths open.
+          </div>
+          <div className="grid gap-3 lg:grid-cols-3">
             {roleOptions.map((role) => {
-              const value = role.label.toLowerCase().replace(/ /g, '_');
-              const selected = state.contributionMode === value;
+              const selected = state.contributionMode === role.value;
 
               return (
-                <Card key={role.label} className="bg-cream p-5 text-center shadow-none">
-                  <label className="block cursor-pointer">
+                <Card key={role.value} className="bg-cream p-5 shadow-none">
+                  <label className="flex h-full cursor-pointer flex-col gap-4">
                     <input
                       type="radio"
                       name="contributionMode"
-                      value={value}
+                      value={role.value}
                       defaultChecked={selected}
                       className="sr-only peer"
                       required
+                      disabled={!canSubmit}
                     />
-                    <span className="text-sm font-semibold text-trust">{role.label}</span>
-                    <span className="mt-2 block text-xs leading-5 text-ink/60">
-                      {role.description}
+                    <span>
+                      <span className="block text-xs font-bold uppercase tracking-[0.18em] text-trust/70">
+                        {role.eyebrow}
+                      </span>
+                      <span className="mt-2 block text-lg font-bold text-ink">{role.label}</span>
+                      <span className="mt-2 block text-sm leading-6 text-ink/65">
+                        {role.description}
+                      </span>
                     </span>
-                    <span className="mt-4 block rounded-full bg-white px-3 py-2 text-xs font-semibold text-ink/50 ring-1 ring-black/5 peer-checked:text-trust peer-checked:ring-trust/40">
-                      {selected ? 'Selected' : 'Select'}
+                    <span className="block space-y-2 text-xs leading-5 text-ink/60">
+                      {role.outcomes.map((outcome) => (
+                        <span key={outcome} className="block rounded-2xl bg-white px-3 py-2">
+                          {outcome}
+                        </span>
+                      ))}
+                    </span>
+                    <span className="mt-auto block rounded-full bg-white px-3 py-2 text-center text-xs font-semibold text-ink/50 ring-1 ring-black/5 peer-checked:text-trust peer-checked:ring-trust/40 peer-disabled:cursor-not-allowed peer-disabled:opacity-60">
+                      {selected ? 'Selected' : 'Select this mode'}
                     </span>
                   </label>
                 </Card>
@@ -273,7 +323,8 @@ export default async function RoleOnboardingPage({ searchParams }: RoleOnboardin
           </div>
           <button
             type="submit"
-            className="rounded-full bg-trust px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-trust/90"
+            disabled={!canSubmit}
+            className="rounded-full bg-trust px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-trust/90 disabled:cursor-not-allowed disabled:bg-ink/30"
           >
             Save role preferences
           </button>
