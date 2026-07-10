@@ -1,0 +1,69 @@
+name: PR Quality
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  metadata:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body || '';
+            const required = [
+              '## Summary',
+              '## Scope',
+              '## Dependencies and Merge Order',
+              '## Architecture Fit',
+              '## Database and Migration Review',
+              '## Security, Privacy, and Trust Review',
+              '## Failure Modes and Operations',
+              '## Testing Evidence',
+              '## Documentation and Release Impact'
+            ];
+            const missing = required.filter(section => !body.includes(section));
+            if (missing.length) {
+              core.setFailed(`PR description is missing required sections: ${missing.join(', ')}`);
+            }
+            const placeholders = [
+              /^-\s*$/m,
+              /Exact commands and results:\s*```text\s*```/s,
+              /Migration notes:\s*$/m,
+              /Security\/privacy notes:\s*$/m
+            ];
+            const unresolved = placeholders.filter(pattern => pattern.test(body));
+            if (unresolved.length) {
+              core.setFailed('PR description still contains empty required evidence or placeholder content.');
+            }
+            const changed = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              per_page: 100
+            });
+            const paths = changed.map(file => file.filename);
+            const migrationChanged = paths.some(path => path.startsWith('supabase/migrations/'));
+            if (migrationChanged && !/Migration notes:\s*\S+/s.test(body)) {
+              core.setFailed('Migration changes require concrete migration notes.');
+            }
+            const envChanged = paths.some(path => path === '.env.example' || /env/i.test(path));
+            const docsChanged = paths.some(path => path.startsWith('docs/'));
+            if (envChanged && !docsChanged) {
+              core.setFailed('Environment changes require a documentation update in the same PR.');
+            }
+            const productionCodeChanged = paths.some(path => /^(app|lib|components|types)\//.test(path));
+            const testsChanged = paths.some(path => path.startsWith('tests/'));
+            if (productionCodeChanged && !testsChanged && !/Testing Evidence[\s\S]*not applicable/i.test(body)) {
+              core.setFailed('Production-code changes require tests or an explicit evidence-backed not-applicable explanation.');
+            }
+            if (changed.length > 40) {
+              core.warning(`Large PR: ${changed.length} changed files. Require explicit reviewer confirmation that the scope cannot be safely split.`);
+            }
