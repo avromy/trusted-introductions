@@ -5,6 +5,7 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
+    exclude: ['tests/e2e/**', 'node_modules/**', 'dist/**', '.next/**'],
   },
   resolve: {
     alias: {
