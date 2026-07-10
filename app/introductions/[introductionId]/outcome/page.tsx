@@ -11,12 +11,14 @@ const OUTCOME_COPY: Record<IntroductionOutcome, { label: string; description: st
   no_response: { label: 'No response', description: 'One or more parties did not reply after a reasonable follow-up window.' },
 };
 
-interface IntroductionOutcomePageProps { params: { introductionId: string } }
+interface IntroductionOutcomePageProps { params: Promise<{ introductionId: string }> }
 
-export default function IntroductionOutcomePage({ params }: IntroductionOutcomePageProps) {
+export default async function IntroductionOutcomePage({ params }: IntroductionOutcomePageProps) {
+  const { introductionId } = await params;
+
   async function captureOutcome(formData: FormData) {
     'use server';
-    await captureIntroductionOutcomeAction(params.introductionId, formData);
+    await captureIntroductionOutcomeAction(introductionId, formData);
   }
 
   return (
