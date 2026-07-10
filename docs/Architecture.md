@@ -2,29 +2,36 @@
 
 ## Current State
 
-M1 — Application Foundation is complete. The repository now contains a runnable Next.js App Router application foundation with TypeScript, Tailwind CSS, reusable UI primitives, Vitest, ESLint, Prettier, Supabase client/server configuration, and an initial Supabase foundation migration.
+MVP core is complete at the application, persistence, helper/action, and documentation-contract layer. The repository contains a runnable Next.js App Router application foundation with TypeScript, Tailwind CSS, reusable UI primitives, Vitest, ESLint, Prettier, Supabase client/server configuration, and additive Supabase migrations through the introduction workflow.
 
-The application intentionally remains workflow-light: current pages and tests validate the foundation, navigation shape, and environment configuration without adding invite, profile, matching, introduction, or outcome business logic. M2 — Invite-only Onboarding is the current implementation focus.
+The implemented MVP covers invite-only onboarding, trusted identity/profile/privacy setup, job seeker request persistence, helper capability persistence, deterministic match suggestion generation, steward review persistence, introduction creation, follow-up reminder helper/action coverage, outcome helper/action coverage, and an end-to-end MVP flow test. Production hardening remains before broad rollout.
 
 ## Implemented Foundation
 
 - Next.js App Router web application under `app/`.
-- Shared UI primitives under `components/ui/`.
+- Shared UI primitives under `components/ui/` and onboarding components under `components/onboarding/`.
 - TypeScript path aliasing and strict typechecking.
 - Tailwind CSS styling foundation.
 - Supabase browser and server client helpers.
 - Environment variable validation for required app and Supabase settings.
-- Initial Supabase migration that enables `pgcrypto` and creates the private resume storage bucket.
+- Supabase migrations for foundation, invite-only onboarding, job seeker requests, helper capabilities, match suggestions, steward reviews, and introductions.
 - Real npm scripts for development, typechecking, unit tests, formatting, linting, and production builds.
+
+## Implemented MVP Domain Layers
+
+- **Identity and invitations:** hashed invite tokens, safe invite validation, redemption/revocation actions, trusted identity lookup/creation, session helpers, and audit events.
+- **Onboarding and profiles:** contribution-mode selection, profile setup, privacy settings, onboarding completion, and route-state helpers.
+- **Matching:** job seeker request models/actions/repositories, helper capability models/actions/repositories, deterministic explainable matching, persisted match suggestions, and steward review decision/persistence helpers.
+- **Introductions and outcomes:** introduction creation from approved steward review, follow-up reminder helpers/actions, outcome helpers/actions, and MVP flow coverage from invite through outcome.
 
 ## Target System Shape
 
-A conventional web application is expected:
+The product remains a conventional server-rendered web application:
 
-- Web client for onboarding, profiles, matching review, introductions, and outcomes.
-- Server-side API for identity, invitations, privacy, matching, and outcome workflows.
-- Relational database for auditable trust and outcome records.
-- Background jobs for reminders, match recalculation, and notifications.
+- Web client for onboarding, profiles, matching review, introductions, follow-ups, and outcomes.
+- Server-side actions and repository helpers for identity, invitations, privacy, matching, and outcome workflows.
+- Supabase PostgreSQL for auditable trust, matching, introduction, and outcome records.
+- Background jobs for reminders, match recalculation, and notifications once productionized.
 - Email provider for invites, reminders, and introduction coordination.
 - Feature flag layer for controlled rollout.
 
@@ -36,7 +43,8 @@ A conventional web application is expected:
 - Trust graph: who invited whom, steward review, and relationship context.
 - Matching: explainable recommendations between seekers and helpers.
 - Introductions: human-mediated connection workflow.
-- Outcomes: tracked help results and follow-up status.
+- Follow-ups: reminder and completion tracking around introductions.
+- Outcomes: tracked help results and privacy-aware reporting inputs.
 
 ## Architectural Constraints
 
@@ -45,25 +53,25 @@ A conventional web application is expected:
 - AI may draft neutral summaries or match explanations, but must not write personal endorsements for helpers.
 - Public meet pages must be opt-in and revocable.
 - Feature flags must protect unfinished or sensitive capabilities.
-- M2 onboarding work must extend the existing foundation rather than restarting, rescaffolding, or resetting the architecture.
+- Production hardening must extend the current MVP implementation rather than restarting, rescaffolding, or resetting the architecture.
 
-## Current Implementation Focus: M2 Invite-only Onboarding
+## Current Implementation Focus: Production Hardening
 
-M2 should add the first product workflow on top of the completed foundation:
+The next implementation phase should harden the MVP core without adding product scope:
 
-- Invite creation and redemption.
-- Trusted identity creation.
-- Initial profile setup.
-- Privacy settings.
-
-M2 should preserve the accepted product decisions in the ADRs, especially the one-person identity model, accountable invite graph, server-enforced privacy, and hashed invite-code handling.
+- Replace placeholder route shells with production-ready workflow UX.
+- Expand RLS policies and authorization tests for all persisted domain tables.
+- Add invite delivery, reminders, notifications, retries, and compliance handling.
+- Add observability, audit review dashboards, health checks, and runbooks.
+- Add browser-level end-to-end tests once finalized route UX is stable.
 
 ## Open Technical Decisions
 
-The M1 foundation selected the primary web stack and Supabase direction. Remaining implementation decisions should be captured in ADRs before production use where they materially affect safety, privacy, operations, or extensibility:
+The primary web stack and Supabase direction are selected. Remaining production decisions should be captured in ADRs before launch where they materially affect safety, privacy, operations, or extensibility:
 
-- Auth flow details and account recovery behavior.
+- Account recovery behavior and operational auth support.
 - Invite delivery provider and email template conventions.
 - Queue/background job implementation.
 - Notification provider and reminder scheduling.
 - Feature flag provider and rollout mechanics.
+- Observability, alerting, incident response, and data-retention policy details.

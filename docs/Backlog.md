@@ -22,8 +22,9 @@ MVP core is complete: M1 foundation, M2 invite-only onboarding, M3 matching foun
 
 ### M4 — Help and Outcome Tracking for MVP
 
-- Reconciled the introduction, follow-up, and outcome loop in the MVP flow test without adding new product features.
-- Documented that production UX, notification scheduling, and operational reporting remain hardening work.
+- Implemented introduction creation through server actions/repositories and persisted introduction rows from approved steward reviews.
+- Reconciled follow-up reminder and outcome helper/action coverage in the MVP flow without adding new product features.
+- Documented that production UX, durable reminder/outcome workflow tables, notification scheduling, and operational reporting remain hardening work.
 
 ### M3 — Matching Foundation for MVP
 

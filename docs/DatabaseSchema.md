@@ -2,7 +2,7 @@
 
 ## Status
 
-M1 foundation exists in `supabase/migrations/0001_foundation.sql`. M2 invite-only onboarding foundation is represented by the additive migration in `supabase/migrations/0002_m2_invite_onboarding_foundation.sql`. MVP reconciliation does not require a new migration in this PR: the current schema and TypeScript database types cover persisted onboarding and seeker request rows, while helper capability, match recalculation, steward review, introduction, follow-up, and outcome semantics are documented/tested at the MVP helper-contract layer pending production hardening.
+The MVP persistence layer is implemented through additive Supabase migrations: `0001_foundation.sql`, `0002_m2_invite_onboarding_foundation.sql`, `0003_job_seeker_request_persistence.sql`, `0004_helper_capability_persistence.sql`, `0005_match_suggestion_persistence.sql`, and `0006_introduction_creation.sql`. Current schema and TypeScript database types cover persisted onboarding, seeker requests, helper capabilities, match suggestions, steward reviews, and introductions. Follow-up reminder and outcome semantics are covered at the helper/action/test layer pending durable production hardening tables.
 
 ## M2 Invite-Only Onboarding Entities
 
@@ -113,7 +113,7 @@ Append-only record for sensitive onboarding actions.
 - Indexes support invite token lookup, identity lookup, community lookup, and audit lookup.
 - Row level security is enabled on M2 domain tables. Complex access policies are intentionally deferred.
 
-## MVP Matching Entity
+## MVP Matching and Introduction Entities
 
 ### job_seeker_requests
 
@@ -136,7 +136,39 @@ Represents a trusted member's job-help request for matching.
 - created_at
 - updated_at
 
-## steward_reviews
+### helper_capabilities
+
+Represents a trusted member's availability and categories for helping seekers.
+
+- id
+- identity_id
+- categories
+- availability_status
+- weekly_intro_capacity
+- next_available_at
+- industries
+- geographies
+- languages
+- private_notes
+- created_at
+- updated_at
+
+### match_suggestions
+
+Stores ranked, explainable helper suggestions for a seeker request.
+
+- id
+- request_id
+- helper_identity_id
+- helper_capability_id
+- rank
+- score
+- reasons
+- metadata
+- created_at
+- updated_at
+
+### steward_reviews
 
 Durably records steward review assignments and decisions for proposed helper matches. Decision reasons are private application data and audit events store only safe metadata.
 
@@ -151,14 +183,29 @@ Durably records steward review assignments and decisions for proposed helper mat
 - created_at
 - updated_at
 
+### introductions
+
+Represents a steward-created introduction workflow from an approved match suggestion.
+
+- id
+- request_id
+- match_id
+- steward_review_id
+- requester_identity_id
+- helper_identity_id
+- created_by_identity_id
+- status
+- context
+- created_at
+- updated_at
+
 ## Production Hardening Schema Remaining
 
-The MVP core is complete without adding new schema in this reconciliation PR. Before production launch, durable tables or columns should be added for the workflow concepts currently represented by helper contracts and tests:
+The MVP core is complete with persisted onboarding, matching, review, and introduction entities. Before production launch, durable tables or columns should be added for workflow concepts still represented by helper contracts and tests:
 
-- Helper capabilities, including categories, availability, capacity, helper preferences, and private notes.
-- Match proposals or match runs, including score, explanation, recalculation metadata, and status.
-- Introductions, including requester/helper/steward participants and introduction status.
-- Follow-ups or reminders, including due dates, completion, and notification state.
+- Follow-ups or reminders, including due dates, completion, notification state, retry metadata, and unsubscribe/compliance state.
 - Outcomes, including final result, timestamps, reporting-safe metadata, and privacy-preserving aggregation fields.
+- Optional match-run metadata if stewards need historical recalculation grouping beyond persisted match suggestions.
+- Additional audit/observability tables if operational review cannot be satisfied by `audit_events` and logs.
 
 These schema additions are production hardening work and should be introduced with RLS policies, authorization tests, migration runbooks, and data-retention/privacy review.
