@@ -51,7 +51,7 @@ npm run format:check # verify Prettier formatting
 
 ## Supabase
 
-Supabase project configuration is in [`supabase/config.toml`](supabase/config.toml). The initial foundation migration enables `pgcrypto` and creates a private `private-resumes` storage bucket. Additive MVP migrations/types cover invite-only onboarding and seeker request persistence; remaining production workflow tables are documented as hardening work.
+Supabase project configuration is in [`supabase/config.toml`](supabase/config.toml). The initial foundation migration enables `pgcrypto` and creates a private `private-resumes` storage bucket. Additive MVP migrations/types cover invite-only onboarding, seeker request persistence, helper capabilities, match suggestions, steward reviews, and introductions; durable follow-up reminder and outcome tables remain documented as hardening work.
 
 Apply migrations with the Supabase CLI when a local project is running:
 

@@ -63,10 +63,10 @@ Completed MVP matching scope:
 
 Completed MVP loop scope:
 
-- Introduction creation is represented in the reconciled MVP flow from a steward-approved match.
-- Follow-up creation is represented in the reconciled MVP flow for the created introduction.
-- Outcome capture is represented in the reconciled MVP flow for a completed connection.
-- The MVP flow test verifies the core loop from invite through outcome without adding new product features.
+- Introduction creation is implemented through server actions/repositories and persisted introduction rows from a steward-approved match.
+- Follow-up reminder helpers/actions are covered for the created introduction.
+- Outcome helpers/actions are covered for completed connection capture.
+- The MVP flow and introduction workflow tests verify the core loop from invite through outcome without adding new product features.
 
 ## MVP Core
 
@@ -78,7 +78,7 @@ The core MVP loop is covered by implementation helpers, action/repository tests,
 
 ## Production Hardening Remaining
 
-- Replace placeholder screens with production-ready onboarding, matching, review, introduction, follow-up, and outcome UX.
+- Replace placeholder screens and route shells with production-ready onboarding, matching, review, introduction, follow-up, and outcome UX.
 - Add browser-level end-to-end coverage for the full persisted flow after UX routes are finalized.
 - Expand RLS policies and authorization tests beyond the MVP table-level foundation.
 - Add operational invite delivery, reminder scheduling, notification templates, retries, and unsubscribe/compliance handling.

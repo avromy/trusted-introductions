@@ -49,7 +49,7 @@ The M2 identity/profile/privacy action layer is server-first:
 
 ## Implemented Server Actions and Planned Endpoints
 
-The M2 onboarding integration points are implemented as Next.js server actions and repository helpers rather than public HTTP endpoints. Future M3/M4 route shape may use server actions or HTTP route handlers.
+The MVP integration points are implemented as Next.js server actions and repository helpers rather than public HTTP endpoints. Future external API shape may use server actions or HTTP route handlers only when non-web clients or stable public integration points are needed.
 
 ### Invitations
 
@@ -115,7 +115,7 @@ Potential future HTTP equivalents, after hardening:
 
 ### Introductions, Follow-ups, and Outcomes
 
-M4 is complete for MVP reconciliation. The end-to-end MVP flow test represents introduction creation from an approved steward review, follow-up creation for that introduction, and outcome capture. Production route handlers, notification scheduling, and durable workflow tables remain hardening work.
+M4 is complete for MVP reconciliation. Introduction creation is implemented through server actions/repositories with persisted introduction rows. Follow-up reminders and outcomes are covered by helper/action layers and tests; durable reminder/outcome tables, notification scheduling, and public route handlers remain hardening work.
 
 Potential future HTTP equivalents, after hardening:
 
