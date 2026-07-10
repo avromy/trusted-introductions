@@ -14,7 +14,7 @@ import {
 import { createClient } from '@/lib/supabase/server';
 import type { JobSeekerRequestInput, PublicJobSeekerRequest } from '@/types/matching';
 
-type CreateJobSeekerRequestActionInput = Partial<Omit<JobSeekerRequestInput, 'identityId'>>;
+export type CreateJobSeekerRequestActionInput = Partial<Omit<JobSeekerRequestInput, 'identityId'>>;
 
 export type CreateJobSeekerRequestActionResult =
   | { ok: true; request: PublicJobSeekerRequest }
