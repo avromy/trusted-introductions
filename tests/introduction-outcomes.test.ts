@@ -23,6 +23,12 @@ function formData(values: Record<string, string>): FormData {
 function createActionClient(options: {
   user?: { id: string } | null;
   identity?: { id: string; status: 'active' | 'pending' } | null;
+  roles?: { role: 'member' | 'steward' | 'admin'; community_id: string | null }[];
+  introduction?: null | {
+    requester_identity_id: string;
+    helper_identity_id: string;
+    created_by_identity_id: string;
+  };
   auditError?: Error | null;
 }) {
   const auditEvents: unknown[] = [];
@@ -30,14 +36,18 @@ function createActionClient(options: {
     auth: {
       getUser: vi.fn(async () => ({ data: { user: options.user ?? null }, error: null })),
     },
-    from: vi.fn((table: 'trusted_identities' | 'user_roles' | 'audit_events') => {
+    from: vi.fn((table: 'trusted_identities' | 'user_roles' | 'introductions' | 'audit_events') => {
       if (table === 'trusted_identities') {
         return {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
           maybeSingle: vi.fn(async () => ({
             data: options.identity
-              ? { id: options.identity.id, status: options.identity.status, user_id: options.user?.id ?? null }
+              ? {
+                  id: options.identity.id,
+                  status: options.identity.status,
+                  user_id: options.user?.id ?? null,
+                }
               : null,
             error: null,
           })),
@@ -47,7 +57,34 @@ function createActionClient(options: {
       if (table === 'user_roles') {
         return {
           select: vi.fn().mockReturnThis(),
-          eq: vi.fn(async () => ({ data: [], error: null })),
+          eq: vi.fn(async () => ({ data: options.roles ?? [], error: null })),
+        };
+      }
+
+      if (table === 'introductions') {
+        const row =
+          options.introduction === null
+            ? null
+            : {
+                id: 'intro-123',
+                request_id: 'request-123',
+                match_id: 'match-123',
+                steward_review_id: 'review-123',
+                requester_identity_id:
+                  options.introduction?.requester_identity_id ?? 'identity-seeker',
+                helper_identity_id: options.introduction?.helper_identity_id ?? 'identity-helper',
+                created_by_identity_id:
+                  options.introduction?.created_by_identity_id ?? 'identity-steward',
+                status: 'draft',
+                context: {},
+                created_at: NOW.toISOString(),
+                updated_at: NOW.toISOString(),
+              };
+
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn(async () => ({ data: row, error: null })),
         };
       }
 
@@ -108,7 +145,7 @@ describe('introduction outcome helpers', () => {
     expect(() =>
       captureIntroductionOutcome({
         introductionId: '',
-        reporterIdentityId: 'identity-123',
+        reporterIdentityId: 'identity-helper',
         outcome: 'connected',
       }),
     ).toThrow('Introduction id is required.');
@@ -116,7 +153,7 @@ describe('introduction outcome helpers', () => {
     expect(() =>
       captureIntroductionOutcome({
         introductionId: 'intro-123',
-        reporterIdentityId: 'identity-123',
+        reporterIdentityId: 'identity-helper',
         outcome: 'connected',
         note: 'a'.repeat(501),
       }),
@@ -136,10 +173,55 @@ describe('captureIntroductionOutcomeAction', () => {
     expect(auditEvents).toEqual([]);
   });
 
+  it('allows introduction participants to capture outcomes', async () => {
+    const { client, auditEvents } = createActionClient({
+      user: { id: 'user-123' },
+      identity: { id: 'identity-seeker', status: 'active' },
+    });
+
+    await expect(
+      captureIntroductionOutcomeAction('intro-123', formData({ outcome: 'connected' }), {
+        supabase: client,
+        now: NOW,
+      }),
+    ).resolves.toMatchObject({ ok: true });
+    expect(auditEvents).toHaveLength(1);
+  });
+
+  it('allows admins to capture outcomes even when they are not participants', async () => {
+    const { client, auditEvents } = createActionClient({
+      user: { id: 'user-123' },
+      identity: { id: 'identity-admin', status: 'active' },
+      roles: [{ role: 'admin', community_id: null }],
+    });
+
+    await expect(
+      captureIntroductionOutcomeAction('intro-123', formData({ outcome: 'connected' }), {
+        supabase: client,
+        now: NOW,
+      }),
+    ).resolves.toMatchObject({ ok: true });
+    expect(auditEvents).toHaveLength(1);
+  });
+
+  it('blocks non-participants from capturing outcomes', async () => {
+    const { client, auditEvents } = createActionClient({
+      user: { id: 'user-123' },
+      identity: { id: 'identity-outsider', status: 'active' },
+    });
+
+    await expect(
+      captureIntroductionOutcomeAction('intro-123', formData({ outcome: 'connected' }), {
+        supabase: client,
+      }),
+    ).resolves.toMatchObject({ ok: false, error: 'forbidden' });
+    expect(auditEvents).toEqual([]);
+  });
+
   it('returns validation errors for unsupported outcomes before writing audit', async () => {
     const { client, auditEvents } = createActionClient({
       user: { id: 'user-123' },
-      identity: { id: 'identity-123', status: 'active' },
+      identity: { id: 'identity-helper', status: 'active' },
     });
 
     await expect(
@@ -157,7 +239,7 @@ describe('captureIntroductionOutcomeAction', () => {
   it('writes an audit event and returns the captured outcome', async () => {
     const { client, auditEvents } = createActionClient({
       user: { id: 'user-123' },
-      identity: { id: 'identity-123', status: 'active' },
+      identity: { id: 'identity-helper', status: 'active' },
     });
 
     const result = await captureIntroductionOutcomeAction(
@@ -171,14 +253,14 @@ describe('captureIntroductionOutcomeAction', () => {
       outcome: {
         introductionId: 'intro-123',
         outcome: 'opportunity_created',
-        reporterIdentityId: 'identity-123',
+        reporterIdentityId: 'identity-helper',
         note: 'Hiring loop started.',
       },
     });
     expect(auditEvents).toEqual([
       {
         event_type: 'introduction_outcome.opportunity_created',
-        actor_identity_id: 'identity-123',
+        actor_identity_id: 'identity-helper',
         subject_table: 'introductions',
         subject_id: 'intro-123',
         occurred_at: '2026-07-08T12:00:00.000Z',

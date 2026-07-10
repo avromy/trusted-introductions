@@ -6,12 +6,13 @@ import {
 } from '@/lib/introductions/follow-up-reminder-actions';
 import {
   normalizeFollowUpReminderRecipients,
+  resolveIntroductionFollowUpReminder,
   scheduleIntroductionFollowUpReminder,
 } from '@/lib/introductions/follow-up-reminders';
 
 const NOW = new Date('2026-07-08T12:00:00.000Z');
 
-type TableName = 'trusted_identities' | 'user_roles' | 'audit_events';
+type TableName = 'trusted_identities' | 'user_roles' | 'introductions' | 'audit_events';
 
 function createFormData(overrides: Record<string, string | string[]> = {}): FormData {
   const formData = new FormData();
@@ -30,25 +31,78 @@ function createFormData(overrides: Record<string, string | string[]> = {}): Form
   return formData;
 }
 
-function createSupabaseMock(options: { insertError?: Error | null } = {}) {
+function createSupabaseMock(
+  options: {
+    identityId?: string;
+    roles?: { role: 'member' | 'steward' | 'admin'; community_id: string | null }[];
+    introduction?: null | {
+      requester_identity_id: string;
+      helper_identity_id: string;
+      created_by_identity_id: string;
+    };
+    insertError?: Error | null;
+  } = {},
+) {
   const insert = vi.fn(async () => ({ error: options.insertError ?? null }));
   const maybeSingleIdentity = vi.fn(async () => ({
-    data: { id: 'identity-steward', user_id: 'user-1', community_id: 'community-1', status: 'active' },
+    data: {
+      id: options.identityId ?? 'identity-steward',
+      user_id: 'user-1',
+      community_id: 'community-1',
+      status: 'active',
+    },
     error: null,
   }));
   const maybeSingleRole = vi.fn(async () => ({
-    data: { role: 'steward' },
+    data: options.roles ?? [{ role: 'steward', community_id: null }],
     error: null,
   }));
   const supabase = {
     auth: { getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } }, error: null })) },
     from: vi.fn((table: TableName) => {
       if (table === 'trusted_identities') {
-        return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: maybeSingleIdentity };
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: maybeSingleIdentity,
+        };
       }
 
       if (table === 'user_roles') {
-        return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: maybeSingleRole };
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn(async () => ({
+            data: options.roles ?? [{ role: 'steward', community_id: null }],
+            error: null,
+          })),
+          maybeSingle: maybeSingleRole,
+        };
+      }
+
+      if (table === 'introductions') {
+        const row =
+          options.introduction === null
+            ? null
+            : {
+                id: 'intro-123',
+                request_id: 'request-123',
+                match_id: 'match-123',
+                steward_review_id: 'review-123',
+                requester_identity_id:
+                  options.introduction?.requester_identity_id ?? 'identity-seeker',
+                helper_identity_id: options.introduction?.helper_identity_id ?? 'identity-helper',
+                created_by_identity_id:
+                  options.introduction?.created_by_identity_id ?? 'identity-steward',
+                status: 'draft',
+                context: {},
+                created_at: NOW.toISOString(),
+                updated_at: NOW.toISOString(),
+              };
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn(async () => ({ data: row, error: null })),
+        };
       }
 
       return { insert };
@@ -95,6 +149,34 @@ describe('introduction follow-up reminder helpers', () => {
     });
   });
 
+  it('emits privacy-safe audit events when reminders are completed or skipped', () => {
+    const completed = resolveIntroductionFollowUpReminder({
+      introductionId: 'intro-123',
+      actorIdentityId: 'identity-helper',
+      status: 'completed',
+      note: ' Private completion detail. ',
+      occurredAt: NOW,
+    });
+    const skipped = resolveIntroductionFollowUpReminder({
+      introductionId: 'intro-123',
+      actorIdentityId: 'identity-steward',
+      status: 'canceled',
+      note: ' Skip because private reason. ',
+      occurredAt: NOW,
+    });
+
+    expect(completed).toMatchObject({
+      event_type: 'introduction_follow_up_reminder.completed',
+      metadata: { status: 'completed', hasNote: true, noteLength: 26 },
+    });
+    expect(skipped).toMatchObject({
+      event_type: 'introduction_follow_up_reminder.canceled',
+      metadata: { status: 'canceled', hasNote: true, noteLength: 28 },
+    });
+    expect(JSON.stringify([completed, skipped])).not.toContain('Private completion detail');
+    expect(JSON.stringify([completed, skipped])).not.toContain('private reason');
+  });
+
   it('requires at least one recipient and a future reminder time', () => {
     expect(() => normalizeFollowUpReminderRecipients([' ', ''])).toThrow(
       'At least one reminder recipient is required.',
@@ -112,7 +194,7 @@ describe('introduction follow-up reminder helpers', () => {
 });
 
 describe('scheduleIntroductionFollowUpReminderAction', () => {
-  it('persists the scheduled reminder audit event', async () => {
+  it('persists the scheduled reminder audit event for a steward', async () => {
     const { supabase, insert } = createSupabaseMock();
 
     const result = await scheduleIntroductionFollowUpReminderAction('intro-123', createFormData(), {
@@ -137,6 +219,36 @@ describe('scheduleIntroductionFollowUpReminderAction', () => {
         subject_id: 'intro-123',
       }),
     );
+  });
+
+  it('allows participants to schedule a follow-up reminder', async () => {
+    const { supabase, insert } = createSupabaseMock({
+      identityId: 'identity-helper',
+      roles: [{ role: 'member', community_id: null }],
+    });
+
+    await expect(
+      scheduleIntroductionFollowUpReminderAction('intro-123', createFormData(), {
+        supabase,
+        now: NOW,
+      }),
+    ).resolves.toMatchObject({ ok: true });
+    expect(insert).toHaveBeenCalledTimes(1);
+  });
+
+  it('blocks non-participants from scheduling a follow-up reminder', async () => {
+    const { supabase, insert } = createSupabaseMock({
+      identityId: 'identity-outsider',
+      roles: [{ role: 'member', community_id: null }],
+    });
+
+    await expect(
+      scheduleIntroductionFollowUpReminderAction('intro-123', createFormData(), {
+        supabase,
+        now: NOW,
+      }),
+    ).resolves.toMatchObject({ ok: false, error: 'forbidden' });
+    expect(insert).not.toHaveBeenCalled();
   });
 
   it('returns validation errors for invalid submitted reminders', async () => {

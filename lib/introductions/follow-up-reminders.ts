@@ -20,6 +20,14 @@ export const INTRODUCTION_FOLLOW_UP_REMINDER_EVENT_TYPES = [
 export type IntroductionFollowUpReminderEventType =
   (typeof INTRODUCTION_FOLLOW_UP_REMINDER_EVENT_TYPES)[number];
 
+export interface ResolveIntroductionFollowUpReminderInput {
+  introductionId: string;
+  actorIdentityId: string;
+  status: Extract<IntroductionFollowUpReminderStatus, 'completed' | 'canceled'>;
+  note?: string | null;
+  occurredAt?: Date | string;
+}
+
 export interface ScheduleIntroductionFollowUpReminderInput {
   introductionId: string;
   stewardIdentityId: string;
@@ -101,6 +109,32 @@ export function normalizeFollowUpReminderRecipients(recipientIdentityIds: string
   }
 
   return normalized;
+}
+
+export function resolveIntroductionFollowUpReminder(
+  input: ResolveIntroductionFollowUpReminderInput,
+): IntroductionFollowUpReminderEventPayload {
+  const introductionId = assertNonEmpty(input.introductionId, 'Introduction id');
+  const actorIdentityId = assertNonEmpty(input.actorIdentityId, 'Actor identity id');
+  const occurredAt = normalizeOptionalDate(input.occurredAt);
+  const note = normalizeFollowUpReminderNote(input.note);
+
+  if (input.status !== 'completed' && input.status !== 'canceled') {
+    throw new Error('Reminder resolution status must be completed or canceled.');
+  }
+
+  return {
+    event_type: `introduction_follow_up_reminder.${input.status}`,
+    actor_identity_id: actorIdentityId,
+    subject_table: 'introductions',
+    subject_id: introductionId,
+    occurred_at: occurredAt,
+    metadata: {
+      status: input.status,
+      hasNote: note !== null,
+      noteLength: note?.length ?? 0,
+    },
+  };
 }
 
 export function scheduleIntroductionFollowUpReminder(
