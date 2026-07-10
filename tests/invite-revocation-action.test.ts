@@ -150,7 +150,6 @@ describe('revokeInviteAction', () => {
         target_type: 'invite',
         target_id: 'invite-123',
         metadata: {
-          inviteeEmail: 'invitee@example.com',
           communityId: 'community-123',
           revokedAt: NOW.toISOString(),
         },

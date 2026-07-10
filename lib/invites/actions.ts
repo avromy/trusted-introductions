@@ -21,6 +21,11 @@ import {
   type InviteRepositoryClient,
 } from '@/lib/invites/repository';
 import { hashInviteToken } from '@/lib/invites/tokens';
+import {
+  enqueueInviteDeliveryNotification,
+  type EnqueueInviteDeliveryResult,
+  type InviteDeliveryNotificationClient,
+} from '@/lib/notifications/invite';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/types/supabase';
 
@@ -34,7 +39,8 @@ type InvitationInsertResult = {
 type InvitationInsertPayload = ReturnType<typeof createInvitePayload>['payload'];
 
 export type InviteCreationSupabaseClient = SupabaseAuthClient &
-  AuditEventsSupabaseClient & {
+  AuditEventsSupabaseClient &
+  InviteDeliveryNotificationClient & {
     from(table: 'invitations'): {
       insert(payload: InvitationInsertPayload): {
         select(columns: 'id'): {
@@ -85,6 +91,7 @@ export interface CreateInviteActionResult {
   inviteId: string;
   plaintextToken: string;
   expiresAt: string | null;
+  inviteDelivery: EnqueueInviteDeliveryResult;
 }
 
 export type RevokeInviteActionResult =
@@ -113,6 +120,7 @@ export type InviteValidationActionResult =
 interface CreateInviteActionDependencies {
   supabase?: InviteCreationSupabaseClient;
   now?: Date;
+  appUrl?: string;
 }
 
 interface RedeemInviteActionDependencies {
@@ -217,6 +225,16 @@ export async function createInviteAction(
   });
 
   const createdInvite = await insertInvite(supabase, invite.payload);
+  const inviteDelivery = await enqueueInviteDeliveryNotification(supabase, {
+    inviteId: createdInvite.id,
+    inviteeEmail: invite.payload.invitee_email,
+    inviterIdentityId,
+    plaintextToken: invite.plaintextToken,
+    communityId: invite.payload.community_id,
+    expiresAt: invite.payload.expires_at,
+    appUrl: dependencies.appUrl,
+    now,
+  });
 
   await insertAuditEvent(
     supabase,
@@ -237,6 +255,7 @@ export async function createInviteAction(
     inviteId: createdInvite.id,
     plaintextToken: invite.plaintextToken,
     expiresAt: invite.payload.expires_at,
+    inviteDelivery,
   };
 }
 

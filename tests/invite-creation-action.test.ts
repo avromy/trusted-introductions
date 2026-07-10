@@ -32,9 +32,11 @@ const invitationRow: InvitationRow = {
 function mockInviteCreationClient(options: {
   user?: Awaited<ReturnType<InviteCreationSupabaseClient['auth']['getUser']>>['data']['user'];
   inviteId?: string;
+  inviteError?: Error;
 }) {
   const insertedInvites: InsertedInvite[] = [];
   const auditEvents: unknown[] = [];
+  const notifications: unknown[] = [];
 
   const client = {
     auth: {
@@ -43,7 +45,7 @@ function mockInviteCreationClient(options: {
         error: null,
       })),
     },
-    from: vi.fn((table: 'invitations' | 'audit_events') => {
+    from: vi.fn((table: 'invitations' | 'audit_events' | 'notification_outbox') => {
       if (table === 'invitations') {
         return {
           insert: (payload: InsertedInvite) => {
@@ -52,8 +54,8 @@ function mockInviteCreationClient(options: {
             return {
               select: (columns: 'id') => ({
                 single: async () => ({
-                  data: { id: options.inviteId ?? 'invite-123' },
-                  error: null,
+                  data: options.inviteError ? null : { id: options.inviteId ?? 'invite-123' },
+                  error: options.inviteError ?? null,
                 }),
               }),
             };
@@ -61,17 +63,38 @@ function mockInviteCreationClient(options: {
         };
       }
 
-      return {
-        insert: async (payload: unknown) => {
-          auditEvents.push(payload);
+      if (table === 'audit_events') {
+        return {
+          insert: async (payload: unknown) => {
+            auditEvents.push(payload);
 
-          return { error: null };
+            return { error: null };
+          },
+        };
+      }
+
+      return {
+        insert: (payload: unknown) => {
+          notifications.push(payload);
+          return {
+            select: (columns: 'id,idempotency_key') => ({
+              maybeSingle: async () => ({
+                data: { id: 'notification-123', idempotency_key: 'invite-delivery:invite-456:created' },
+                error: null,
+              }),
+            }),
+          };
         },
+        select: (columns: 'id,idempotency_key') => ({
+          eq: (column: 'idempotency_key', value: string) => ({
+            maybeSingle: async () => ({ data: null, error: null }),
+          }),
+        }),
       };
     }),
   } as unknown as InviteCreationSupabaseClient;
 
-  return { client, insertedInvites, auditEvents };
+  return { client, insertedInvites, auditEvents, notifications };
 }
 
 function mockInviteRedemptionClient(user: Awaited<ReturnType<InviteRedemptionSupabaseClient['auth']['getUser']>>['data']['user']) {
@@ -98,7 +121,7 @@ function mockInviteRedemptionClient(user: Awaited<ReturnType<InviteRedemptionSup
     auth: {
       getUser: vi.fn(async () => ({ data: { user }, error: null })),
     },
-    from: vi.fn((table: 'invitations' | 'audit_events') => {
+    from: vi.fn((table: 'invitations' | 'audit_events' | 'notification_outbox') => {
       if (table === 'audit_events') {
         return {
           insert: async (payload: unknown) => {
@@ -125,7 +148,7 @@ describe('createInviteAction', () => {
   });
 
   it('does not write invites or audit events for unauthenticated creation attempts', async () => {
-    const { client, insertedInvites, auditEvents } = mockInviteCreationClient({ user: null });
+    const { client, insertedInvites, auditEvents, notifications } = mockInviteCreationClient({ user: null });
 
     await expect(
       createInviteAction({ inviteeEmail: 'invitee@example.com' }, { supabase: client, now: NOW }),
@@ -133,10 +156,29 @@ describe('createInviteAction', () => {
 
     expect(insertedInvites).toEqual([]);
     expect(auditEvents).toEqual([]);
+    expect(notifications).toEqual([]);
+  });
+
+  it('does not enqueue a notification when invite creation fails', async () => {
+    const { client, auditEvents, notifications } = mockInviteCreationClient({
+      user: {
+        id: 'user-123',
+        email: 'inviter@example.com',
+        identities: [{ identity_id: 'identity-inviter', provider: 'email' }],
+      },
+      inviteError: new Error('database unavailable'),
+    });
+
+    await expect(
+      createInviteAction({ inviteeEmail: 'invitee@example.com' }, { supabase: client, now: NOW }),
+    ).rejects.toThrow('database unavailable');
+
+    expect(notifications).toEqual([]);
+    expect(auditEvents).toEqual([]);
   });
 
   it('creates a hashed invite, writes audit event, and returns plaintext token only once', async () => {
-    const { client, insertedInvites, auditEvents } = mockInviteCreationClient({
+    const { client, insertedInvites, auditEvents, notifications } = mockInviteCreationClient({
       user: {
         id: 'user-123',
         email: 'inviter@example.com',
@@ -150,12 +192,17 @@ describe('createInviteAction', () => {
         inviteeEmail: ' Invitee@Example.com ',
         communityId: 'community-123',
       },
-      { supabase: client, now: NOW },
+      { supabase: client, now: NOW, appUrl: 'https://app.example.test' },
     );
 
     expect(result).toMatchObject({
       inviteId: 'invite-456',
       expiresAt: '2026-07-14T12:00:00.000Z',
+      inviteDelivery: {
+        enqueued: true,
+        notificationId: 'notification-123',
+        idempotencyKey: 'invite-delivery:invite-456:created',
+      },
     });
     expect(result.plaintextToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
 
@@ -180,15 +227,32 @@ describe('createInviteAction', () => {
         target_id: 'invite-456',
         metadata: {
           communityId: 'community-123',
-          inviteeEmail: 'invitee@example.com',
           expiresAt: '2026-07-14T12:00:00.000Z',
         },
         occurred_at: '2026-07-07T12:00:00.000Z',
       },
     ]);
 
+    expect(notifications).toEqual([
+      expect.objectContaining({
+        notification_type: 'invite.delivery',
+        recipient: 'invitee@example.com',
+        idempotency_key: 'invite-delivery:invite-456:created',
+        payload: expect.objectContaining({
+          inviteId: 'invite-456',
+          inviteLink: `https://app.example.test/auth?invite=${result.plaintextToken}`,
+        }),
+        metadata: {
+          inviteId: 'invite-456',
+          communityId: 'community-123',
+          inviterIdentityId: 'identity-inviter',
+        },
+      }),
+    ]);
+
     expect(JSON.stringify(insertedInvites)).not.toContain(result.plaintextToken);
     expect(JSON.stringify(auditEvents)).not.toContain(result.plaintextToken);
+    expect(JSON.stringify(notifications.map((notification) => (notification as { metadata: unknown }).metadata))).not.toContain(result.plaintextToken);
     expect(JSON.stringify(result).match(new RegExp(result.plaintextToken, 'g'))).toHaveLength(1);
   });
 });
