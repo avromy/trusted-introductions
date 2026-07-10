@@ -74,7 +74,9 @@ function mockInviteCreationClient(options: {
   return { client, insertedInvites, auditEvents };
 }
 
-function mockInviteRedemptionClient(user: Awaited<ReturnType<InviteRedemptionSupabaseClient['auth']['getUser']>>['data']['user']) {
+function mockInviteRedemptionClient(
+  user: Awaited<ReturnType<InviteRedemptionSupabaseClient['auth']['getUser']>>['data']['user'],
+) {
   const updates: unknown[] = [];
   const auditEvents: unknown[] = [];
 
@@ -180,7 +182,6 @@ describe('createInviteAction', () => {
         target_id: 'invite-456',
         metadata: {
           communityId: 'community-123',
-          inviteeEmail: 'invitee@example.com',
           expiresAt: '2026-07-14T12:00:00.000Z',
         },
         occurred_at: '2026-07-07T12:00:00.000Z',

@@ -26,11 +26,13 @@ function invitation(overrides: Partial<InvitationRow> = {}): InvitationRow {
   };
 }
 
-function mockInviteRevocationClient(options: {
-  user?: Awaited<ReturnType<InviteRevocationSupabaseClient['auth']['getUser']>>['data']['user'];
-  invite?: InvitationRow | null;
-  updateError?: { message?: string } | null;
-} = {}) {
+function mockInviteRevocationClient(
+  options: {
+    user?: Awaited<ReturnType<InviteRevocationSupabaseClient['auth']['getUser']>>['data']['user'];
+    invite?: InvitationRow | null;
+    updateError?: { message?: string } | null;
+  } = {},
+) {
   const updates: InvitationUpdate[] = [];
   const filters: Array<{ column: string; value: unknown }> = [];
   const auditEvents: unknown[] = [];
@@ -58,7 +60,9 @@ function mockInviteRevocationClient(options: {
                       data: options.invite ?? null,
                       error:
                         options.updateError ??
-                        (options.invite === null ? { message: 'JSON object requested, multiple (or no) rows returned' } : null),
+                        (options.invite === null
+                          ? { message: 'JSON object requested, multiple (or no) rows returned' }
+                          : null),
                     }),
                   }),
                 };
@@ -89,7 +93,9 @@ const AUTHENTICATED_USER = {
 
 describe('revokeInviteAction', () => {
   it('returns a safe validation error for a blank invite id', async () => {
-    const { client, updates, auditEvents } = mockInviteRevocationClient({ user: AUTHENTICATED_USER });
+    const { client, updates, auditEvents } = mockInviteRevocationClient({
+      user: AUTHENTICATED_USER,
+    });
 
     await expect(revokeInviteAction('   ', { supabase: client, now: NOW })).resolves.toEqual({
       ok: false,
@@ -103,11 +109,13 @@ describe('revokeInviteAction', () => {
   it('returns a safe auth-required result when no trusted identity is authenticated', async () => {
     const { client, updates, auditEvents } = mockInviteRevocationClient({ user: null });
 
-    await expect(revokeInviteAction('invite-123', { supabase: client, now: NOW })).resolves.toEqual({
-      ok: false,
-      error: 'auth_required',
-      message: 'A signed-in trusted identity is required to revoke an invite.',
-    });
+    await expect(revokeInviteAction('invite-123', { supabase: client, now: NOW })).resolves.toEqual(
+      {
+        ok: false,
+        error: 'auth_required',
+        message: 'A signed-in trusted identity is required to revoke an invite.',
+      },
+    );
     expect(updates).toEqual([]);
     expect(auditEvents).toEqual([]);
   });
@@ -150,7 +158,6 @@ describe('revokeInviteAction', () => {
         target_type: 'invite',
         target_id: 'invite-123',
         metadata: {
-          inviteeEmail: 'invitee@example.com',
           communityId: 'community-123',
           revokedAt: NOW.toISOString(),
         },
@@ -168,7 +175,9 @@ describe('revokeInviteAction', () => {
       invite: null,
     });
 
-    await expect(revokeInviteAction('missing-invite', { supabase: client, now: NOW })).resolves.toEqual({
+    await expect(
+      revokeInviteAction('missing-invite', { supabase: client, now: NOW }),
+    ).resolves.toEqual({
       ok: false,
       error: 'not_found',
       message: 'Invite not found.',
