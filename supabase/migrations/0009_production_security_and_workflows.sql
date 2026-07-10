@@ -40,6 +40,13 @@ as $$
   )
 $$;
 
+revoke all on function public.current_identity_id() from public;
+revoke all on function public.current_identity_has_role(public.user_role_name[], uuid) from public;
+revoke all on function public.identities_share_community(uuid, uuid) from public;
+grant execute on function public.current_identity_id() to authenticated;
+grant execute on function public.current_identity_has_role(public.user_role_name[], uuid) to authenticated;
+grant execute on function public.identities_share_community(uuid, uuid) to authenticated;
+
 alter table public.helper_capabilities enable row level security;
 alter table public.match_suggestions enable row level security;
 
@@ -103,7 +110,7 @@ create policy introductions_operator_write on public.introductions for all to au
 using (created_by_identity_id = public.current_identity_id() or public.current_identity_has_role(array['admin']::public.user_role_name[]))
 with check (created_by_identity_id = public.current_identity_id() or public.current_identity_has_role(array['admin']::public.user_role_name[]));
 
-create type public.introduction_follow_up_status as enum ('scheduled','completed','skipped','canceled');
+create type public.introduction_follow_up_status as enum ('scheduled','sent','completed','skipped','canceled');
 create table public.introduction_follow_ups (
   id uuid primary key default gen_random_uuid(),
   introduction_id uuid not null references public.introductions(id) on delete cascade,
@@ -116,7 +123,11 @@ create table public.introduction_follow_ups (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint introduction_follow_ups_future check (remind_at > created_at),
-  constraint introduction_follow_ups_recipients check (cardinality(recipient_identity_ids) > 0)
+  constraint introduction_follow_ups_recipients check (cardinality(recipient_identity_ids) > 0),
+  constraint introduction_follow_ups_completed_consistency check (
+    (status = 'completed' and completed_at is not null)
+    or (status <> 'completed' and completed_at is null)
+  )
 );
 create index introduction_follow_ups_due_idx on public.introduction_follow_ups(status, remind_at) where status = 'scheduled';
 create trigger set_introduction_follow_ups_updated_at before update on public.introduction_follow_ups for each row execute function public.set_updated_at();
@@ -127,7 +138,7 @@ create policy introduction_follow_ups_creator_write on public.introduction_follo
 using (created_by_identity_id = public.current_identity_id() or public.current_identity_has_role(array['steward','admin']::public.user_role_name[]))
 with check (created_by_identity_id = public.current_identity_id() or public.current_identity_has_role(array['steward','admin']::public.user_role_name[]));
 
-create type public.introduction_outcome_status as enum ('connected','meeting_scheduled','interview','offer','hired','not_a_fit','no_response','other');
+create type public.introduction_outcome_status as enum ('connected','meeting_scheduled','in_conversation','opportunity_created','not_a_fit','no_response');
 create table public.introduction_outcomes (
   id uuid primary key default gen_random_uuid(),
   introduction_id uuid not null references public.introductions(id) on delete cascade,
