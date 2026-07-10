@@ -5,6 +5,7 @@ import {
   requireCurrentTrustedIdentity,
   toSafeAuthFailureResult,
 } from '@/lib/auth/steward';
+import { createIntroductionOutcome, type OutcomeRepositoryClient } from '@/lib/introductions/outcome-repository';
 import {
   getIntroductionById,
   type IntroductionRepositoryClient,
@@ -22,11 +23,10 @@ export type IntroductionOutcomeActionResult =
   | { ok: false; error: 'auth_required' | 'forbidden'; message: string };
 
 export type IntroductionOutcomeActionClient = Parameters<typeof requireCurrentTrustedIdentity>[0] &
-  IntroductionRepositoryClient & {
+  IntroductionRepositoryClient &
+  OutcomeRepositoryClient & {
     from(table: 'audit_events'): {
-      insert(
-        payload: ReturnType<typeof captureIntroductionOutcome>['event'],
-      ): Promise<{ error: Error | null }>;
+      insert(payload: unknown): Promise<{ error: Error | null }>;
     };
   };
 
@@ -66,21 +66,12 @@ export async function captureIntroductionOutcomeAction(
   }
 
   const introduction = await getIntroductionById(introductionId, supabase);
-
-  if (!introduction) {
-    return { ok: false, error: 'not_found', message: 'Introduction was not found.' };
-  }
-
+  if (!introduction) return { ok: false, error: 'not_found', message: 'Introduction was not found.' };
   if (!canMutateIntroduction(identity, introduction)) {
-    return {
-      ok: false,
-      error: 'forbidden',
-      message: 'You are not authorized to perform this action.',
-    };
+    return { ok: false, error: 'forbidden', message: 'You are not authorized to perform this action.' };
   }
 
   const rawOutcome = formValue(formData, 'outcome');
-
   if (!isIntroductionOutcome(rawOutcome)) {
     return { ok: false, error: 'validation', message: 'Choose a valid introduction outcome.' };
   }
@@ -94,11 +85,9 @@ export async function captureIntroductionOutcomeAction(
       occurredAt: options.now,
     });
 
+    await createIntroductionOutcome(result.outcome, supabase);
     const { error } = await supabase.from('audit_events').insert(result.event);
-
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
     return { ok: true, outcome: result.outcome };
   } catch (error) {
