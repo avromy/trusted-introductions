@@ -22,10 +22,15 @@ function readPayload(payload: unknown): { subject: string; textBody: string; htm
   };
 }
 
+async function defaultDestinationResolver(destinationRef: string): Promise<string> {
+  if (destinationRef.includes('@')) return destinationRef.trim().toLowerCase();
+  throw new Error('notification_destination_unavailable');
+}
+
 export async function runNotificationWorker(input: {
   repository: NotificationOutboxRepositoryClient;
   provider: NotificationDeliveryProvider;
-  resolveDestination: (destinationRef: string) => Promise<string>;
+  resolveDestination?: (destinationRef: string) => Promise<string>;
   batchSize?: number;
   now?: Date;
 }): Promise<NotificationWorkerResult> {
@@ -33,11 +38,12 @@ export async function runNotificationWorker(input: {
   const now = input.now ?? new Date();
   const records = await claimPendingNotifications(batchSize, now, input.repository);
   const result: NotificationWorkerResult = { claimed: records.length, sent: 0, retried: 0, failed: 0 };
+  const resolveDestination = input.resolveDestination ?? defaultDestinationResolver;
 
   for (const record of records) {
     try {
       const payload = readPayload(record.templatePayload);
-      const destination = await input.resolveDestination(record.destinationRef);
+      const destination = await resolveDestination(record.destinationRef);
       const delivery = await deliverWithSafeLogging(input.provider, {
         channel: 'email',
         to: destination,
