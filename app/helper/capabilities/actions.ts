@@ -1,49 +1,29 @@
 'use server';
 
-import {
-  createHelperCapability,
-  serializeHelperCapability,
-  validateHelperCapabilityInput,
-  type HelperAvailabilityStatus,
-  type HelperCapabilityCategory,
-} from '@/lib/matching/helper-capability';
+import { upsertHelperCapabilityAction } from '@/lib/matching/helper-capability-actions';
+import { readHelperCapabilitiesFormData, type HelperCapabilitiesFormState } from './form-state';
 
-function getString(formData: FormData, key: string): string | undefined {
-  const value = formData.get(key);
-  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
-}
+export async function submitHelperCapabilities(
+  _previousState: HelperCapabilitiesFormState,
+  formData: FormData,
+): Promise<HelperCapabilitiesFormState> {
+  const result = await upsertHelperCapabilityAction(readHelperCapabilitiesFormData(formData));
 
-function getList(formData: FormData, key: string): string[] {
-  const values = formData.getAll(key).filter((value): value is string => typeof value === 'string');
-  const expanded = values.flatMap((value) => value.split(','));
-  return expanded.map((item) => item.trim()).filter(Boolean);
-}
+  if (!result.ok) {
+    if (result.error === 'validation') {
+      return {
+        ok: false,
+        message: 'Please fix the highlighted helper capability details.',
+        errors: result.errors,
+      };
+    }
 
-export async function createHelperCapabilitiesFromForm(formData: FormData) {
-  const weeklyIntroCapacity = Number(getString(formData, 'weeklyIntroCapacity') ?? 1);
-  const input = {
-    categories: getList(formData, 'categories') as HelperCapabilityCategory[],
-    availability: {
-      status:
-        (getString(formData, 'availabilityStatus') as HelperAvailabilityStatus | undefined) ??
-        'limited',
-      weeklyIntroCapacity,
-      nextAvailableAt: getString(formData, 'nextAvailableAt') ?? null,
-    },
-    industries: getList(formData, 'industries'),
-    geographies: getList(formData, 'geographies'),
-    languages: getList(formData, 'languages'),
-    privateNotes: getString(formData, 'privateNotes') ?? null,
-  };
-  const errors = validateHelperCapabilityInput(input);
-
-  if (errors.length > 0) {
-    return { ok: false, error: 'validation' as const, errors };
+    return { ok: false, message: result.message, errors: [] };
   }
 
-  return { ok: true, capability: serializeHelperCapability(createHelperCapability(input)) };
-}
-
-export async function submitHelperCapabilities(formData: FormData): Promise<void> {
-  await createHelperCapabilitiesFromForm(formData);
+  return {
+    ok: true,
+    message: 'Helper capabilities saved. Stewards can now use these details for matching.',
+    errors: [],
+  };
 }
