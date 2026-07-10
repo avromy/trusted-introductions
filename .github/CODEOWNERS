@@ -1,0 +1,14 @@
+# Default ownership
+* @avromy
+
+# Security-sensitive and operational boundaries
+/supabase/migrations/ @avromy
+/lib/auth/ @avromy
+/lib/security/ @avromy
+/lib/observability/ @avromy
+/lib/notifications/ @avromy
+/app/api/internal/ @avromy
+/.github/workflows/ @avromy
+/.env.example @avromy
+/docs/security/ @avromy
+/docs/Deployment.md @avromy
