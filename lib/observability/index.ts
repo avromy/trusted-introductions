@@ -8,3 +8,5 @@ export {
   type StructuredLogEvent,
   type StructuredLogInput,
 } from './logger';
+
+export * from './errors';
