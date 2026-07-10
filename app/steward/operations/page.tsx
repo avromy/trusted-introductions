@@ -12,6 +12,8 @@ const LABELS: Record<QueueKind, string> = {
   introductions_awaiting_outcome: 'Introductions awaiting outcome',
 };
 
+type StewardOperationsSearchParams = { limit?: string; offset?: string };
+
 function StateCard({ title, body }: { title: string; body: string }) {
   return <main className="mx-auto flex min-h-screen max-w-3xl items-center px-6 py-16"><Card><p className="text-sm font-semibold uppercase tracking-[0.2em] text-trust">Steward operations</p><h1 className="mt-3 text-3xl font-bold text-ink">{title}</h1><p className="mt-4 text-ink/70">{body}</p></Card></main>;
 }
@@ -20,8 +22,9 @@ function QueueRow({ item }: { item: QueueItem }) {
   return <li className="rounded-2xl border border-trust/10 bg-white p-5 shadow-sm"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-trust">{LABELS[item.kind]}</p><h2 className="mt-2 text-lg font-semibold text-ink">{item.title}</h2><p className="mt-1 text-sm text-ink/65">{item.subtitle}</p><p className="mt-2 text-xs text-ink/50">Status: {item.status} · Updated {item.createdAt}</p></div><Link className="rounded-full bg-trust px-4 py-2 text-center text-sm font-semibold text-white" href={item.href}>Open workflow</Link></div></li>;
 }
 
-export default async function StewardOperationsPage({ searchParams }: { searchParams?: { limit?: string; offset?: string } }) {
-  const result = await getStewardOperationsQueue(searchParams ?? {});
+export default async function StewardOperationsPage({ searchParams }: { searchParams?: Promise<StewardOperationsSearchParams> }) {
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const result = await getStewardOperationsQueue(resolvedSearchParams);
   if (!result.ok) {
     if (result.state === 'unauthorized') return <StateCard title="Steward access required" body="Only active stewards and admins can view the operational queue." />;
     return <StateCard title="Queue unavailable" body={result.message} />;
