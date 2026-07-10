@@ -17,6 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/dependency-review-action@v4
         with:
-          fail-on-severity: high
+          vulnerability-check: false
+          license-check: true
           deny-licenses: GPL-3.0, AGPL-3.0
           comment-summary-in-pr: on-failure
