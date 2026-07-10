@@ -20,7 +20,7 @@ export default function IntroductionOutcomePage({ params }: IntroductionOutcomeP
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl items-center px-6 py-16">
+    <main className="mx-auto flex min-h-screen max-w-4xl items-center px-6 py-16" data-testid="outcome-page">
       <Card>
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-trust">Introduction outcome</p>
         <h1 className="mt-3 text-3xl font-bold text-ink">How did this introduction go?</h1>
@@ -30,32 +30,32 @@ export default function IntroductionOutcomePage({ params }: IntroductionOutcomeP
             <h2 className="text-sm font-semibold text-ink">Privacy boundary</h2>
             <p className="mt-2 text-sm leading-6 text-ink/70">Save the status and a brief stewardship note only. Do not include private message threads, compensation details, interview feedback, or other sensitive personal data.</p>
           </div>
-          <div className="rounded-3xl border border-trust/10 bg-white p-5 shadow-sm">
+          <div className="rounded-3xl border border-trust/10 bg-white p-5 shadow-sm" data-testid="outcome-confirmation">
             <h2 className="text-sm font-semibold text-ink">Confirmation state</h2>
             <p className="mt-2 text-sm leading-6 text-ink/70">Submitting records the selected status and privacy-safe audit metadata. The note helps stewards follow up, but the note text is not copied into audit metadata.</p>
           </div>
         </div>
-        <form action={captureOutcome} className="mt-8 space-y-6">
+        <form action={captureOutcome} className="mt-8 space-y-6" data-testid="outcome-form">
           <fieldset className="space-y-3">
             <legend className="text-sm font-semibold text-ink">Outcome status</legend>
             <p className="text-sm text-ink/60">Choose the best current state. You can schedule another follow-up if the introduction is still active or waiting on a reply.</p>
             <div className="grid gap-3 md:grid-cols-2">
               {INTRODUCTION_OUTCOME_VALUES.map((outcome) => (
                 <label key={outcome} className="flex cursor-pointer gap-3 rounded-2xl border border-trust/10 bg-white px-4 py-3 text-sm text-ink shadow-sm transition hover:border-trust/30 hover:bg-trust/5">
-                  <input required className="mt-1 h-4 w-4 accent-trust" name="outcome" type="radio" value={outcome} />
+                  <input required className="mt-1 h-4 w-4 accent-trust" data-testid={`outcome-option-${outcome}`} name="outcome" type="radio" value={outcome} />
                   <span><span className="block font-semibold">{OUTCOME_COPY[outcome].label}</span><span className="mt-1 block leading-6 text-ink/60">{OUTCOME_COPY[outcome].description}</span></span>
                 </label>
               ))}
             </div>
           </fieldset>
-          <div className="rounded-2xl border border-trust/10 bg-white p-4">
+          <div className="rounded-2xl border border-trust/10 bg-white p-4" data-testid="outcome-follow-up-prompt">
             <p className="text-sm font-semibold text-ink">Optional follow-up prompt</p>
             <p className="mt-1 text-sm leading-6 text-ink/60">If the status is <strong>In conversation</strong> or <strong>No response</strong>, consider scheduling a follow-up reminder after saving this outcome.</p>
           </div>
           <div>
             <label className="block text-sm font-semibold text-ink" htmlFor="note">Private steward note <span className="font-normal text-ink/50">(optional)</span></label>
             <p className="mt-1 text-sm text-ink/60">Add concise context for stewardship decisions. Notes are capped at 500 characters.</p>
-            <textarea className="mt-2 min-h-28 w-full rounded-2xl border border-trust/15 bg-white px-4 py-3 text-sm font-normal outline-none transition placeholder:text-ink/40 focus:border-trust focus:ring-4 focus:ring-trust/10" id="note" maxLength={500} name="note" placeholder="Example: Helper replied; schedule another check-in if no meeting date is set." />
+            <textarea className="mt-2 min-h-28 w-full rounded-2xl border border-trust/15 bg-white px-4 py-3 text-sm font-normal outline-none transition placeholder:text-ink/40 focus:border-trust focus:ring-4 focus:ring-trust/10" data-testid="outcome-note" id="note" maxLength={500} name="note" placeholder="Example: Helper replied; schedule another check-in if no meeting date is set." />
           </div>
           <Button type="submit">Save outcome status</Button>
         </form>
