@@ -1,11 +1,16 @@
 'use server';
 
-import { createJobSeekerRequestAction } from '@/lib/matching/job-seeker-actions';
+import {
+  createJobSeekerRequestAction,
+  type CreateJobSeekerRequestActionResult,
+} from '@/lib/matching/job-seeker-actions';
 import type { JobSeekerRequestStatus } from '@/types/matching';
+
+export type JobSeekerRequestFormState = CreateJobSeekerRequestActionResult | { ok: null };
 
 function getString(formData: FormData, key: string): string | undefined {
   const value = formData.get(key);
-  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 }
 
 function getList(formData: FormData, key: string): string[] {
@@ -33,6 +38,9 @@ export async function createJobSeekerRequestFromForm(formData: FormData) {
   });
 }
 
-export async function submitJobSeekerRequest(formData: FormData): Promise<void> {
-  await createJobSeekerRequestFromForm(formData);
+export async function submitJobSeekerRequest(
+  _previousState: JobSeekerRequestFormState,
+  formData: FormData,
+): Promise<CreateJobSeekerRequestActionResult> {
+  return createJobSeekerRequestFromForm(formData);
 }
