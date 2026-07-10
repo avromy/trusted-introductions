@@ -13,6 +13,7 @@ function buildTestUser(role = 'seeker') {
 
 async function seedAuthenticatedSession(context, role = 'seeker') {
   const user = buildTestUser(role);
+  await context.addCookies([{ name: 'trusted-introductions-e2e-role', value: role, url: 'http://127.0.0.1:3000' }]);
   await context.addInitScript((sessionUser) => {
     window.localStorage.setItem('trusted-introductions:e2e-user', JSON.stringify(sessionUser));
   }, user);
@@ -20,6 +21,7 @@ async function seedAuthenticatedSession(context, role = 'seeker') {
 }
 
 async function clearE2ESession(context) {
+  await context.clearCookies();
   await context.addInitScript(() => {
     window.localStorage.removeItem('trusted-introductions:e2e-user');
   });
