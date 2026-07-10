@@ -69,7 +69,7 @@ describe('audit dashboard page access', () => {
   it('allows steward access', async () => {
     const { client } = authClient('steward');
     vi.mocked(createClient).mockReturnValue(client as never);
-    const html = renderToStaticMarkup(await AuditDashboardPage({ searchParams: {} }));
+    const html = renderToStaticMarkup(await AuditDashboardPage({ searchParams: Promise.resolve({}) }));
     expect(html).toContain('Audit review dashboard');
     expect(html).toContain('invite.created');
   });
@@ -77,21 +77,21 @@ describe('audit dashboard page access', () => {
   it('allows admin access', async () => {
     const { client } = authClient('admin');
     vi.mocked(createClient).mockReturnValue(client as never);
-    const html = renderToStaticMarkup(await AuditDashboardPage({ searchParams: {} }));
+    const html = renderToStaticMarkup(await AuditDashboardPage({ searchParams: Promise.resolve({}) }));
     expect(html).toContain('Audit review dashboard');
   });
 
   it('rejects ordinary users explicitly', async () => {
     const { client } = authClient('member');
     vi.mocked(createClient).mockReturnValue(client as never);
-    const html = renderToStaticMarkup(await AuditDashboardPage({ searchParams: {} }));
+    const html = renderToStaticMarkup(await AuditDashboardPage({ searchParams: Promise.resolve({}) }));
     expect(html).toContain('Steward access required');
   });
 
   it('renders an empty state', async () => {
     const { client } = authClient('steward', [], 0);
     vi.mocked(createClient).mockReturnValue(client as never);
-    const html = renderToStaticMarkup(await AuditDashboardPage({ searchParams: {} }));
+    const html = renderToStaticMarkup(await AuditDashboardPage({ searchParams: Promise.resolve({}) }));
     expect(html).toContain('No audit events found');
   });
 });
