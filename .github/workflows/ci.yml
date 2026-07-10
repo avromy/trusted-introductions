@@ -81,7 +81,21 @@ jobs:
       - name: Lint
         run: npm run lint
       - name: Typecheck
-        run: npm run typecheck
+        id: typecheck
+        run: |
+          set +e
+          npm run typecheck > typecheck.txt 2>&1
+          status=$?
+          cat typecheck.txt
+          exit $status
+      - name: Upload typecheck diagnostics
+        if: failure() && steps.typecheck.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: typecheck-diagnostics
+          path: typecheck.txt
+          if-no-files-found: error
+          retention-days: 7
       - name: Unit tests
         id: unit_tests
         run: npm run test -- --run
