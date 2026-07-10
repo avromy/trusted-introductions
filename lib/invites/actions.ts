@@ -22,6 +22,16 @@ import {
 } from '@/lib/invites/repository';
 import { hashInviteToken } from '@/lib/invites/tokens';
 import { createClient } from '@/lib/supabase/server';
+import {
+  RateLimitExceededError,
+  assertRateLimitAllowed,
+  getRateLimiter,
+  hashScopedIdentifier,
+  rateLimitRules,
+  scopedRateLimitKey,
+  toSafeRateLimitedValidationResult,
+  type RateLimiter,
+} from '@/lib/security/rate-limit';
 import type { Database } from '@/types/supabase';
 
 type InvitationRow = Database['public']['Tables']['invitations']['Row'];
@@ -55,12 +65,7 @@ export type InviteRevocationSupabaseClient = SupabaseAuthClient &
 export type InviteValidationSupabaseClient = InviteRepositoryClient;
 
 export type RedeemInviteActionFailureReason =
-  | 'invalid-token'
-  | 'auth-required'
-  | 'expired'
-  | 'revoked'
-  | 'redeemed'
-  | 'blocked';
+  'invalid-token' | 'auth-required' | 'expired' | 'revoked' | 'redeemed' | 'blocked';
 
 export type RedeemInviteActionResult =
   | {
@@ -81,11 +86,14 @@ export interface CreateInviteActionInput {
   expiresAt?: Date | string | null;
 }
 
-export interface CreateInviteActionResult {
+export type CreateInviteActionResult = {
   inviteId: string;
   plaintextToken: string;
   expiresAt: string | null;
-}
+  ok?: false;
+  error?: 'rate_limited';
+  message?: string;
+};
 
 export type RevokeInviteActionResult =
   | {
@@ -107,21 +115,24 @@ export type InviteValidationActionResult =
   | SafeInviteValidationResult
   | {
       valid: false;
-      reason: 'missing_token' | 'not_found';
+      reason: 'missing_token' | 'not_found' | 'rate_limited';
     };
 
 interface CreateInviteActionDependencies {
   supabase?: InviteCreationSupabaseClient;
+  rateLimiter?: RateLimiter;
   now?: Date;
 }
 
 interface RedeemInviteActionDependencies {
   supabase?: InviteRedemptionSupabaseClient;
+  rateLimiter?: RateLimiter;
   now?: Date;
 }
 
 interface ValidateInviteTokenActionDependencies {
   supabase?: InviteValidationSupabaseClient;
+  rateLimiter?: RateLimiter;
   now?: Date;
 }
 
@@ -208,6 +219,29 @@ export async function createInviteAction(
   const identity = await requireCurrentIdentity(supabase);
   const inviterIdentityId = getIdentityId(identity);
   const now = dependencies.now ?? new Date();
+  const rateLimiter = dependencies.rateLimiter ?? getRateLimiter();
+
+  try {
+    await assertRateLimitAllowed(
+      rateLimiter,
+      rateLimitRules.inviteCreation,
+      scopedRateLimitKey('invite-creation', inviterIdentityId),
+      now,
+    );
+  } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      return {
+        inviteId: '',
+        plaintextToken: '',
+        expiresAt: null,
+        ok: false,
+        error: 'rate_limited',
+        message: 'Too many attempts. Please wait before trying again.',
+      };
+    }
+
+    throw error;
+  }
   const invite = createInvitePayload({
     inviteeEmail: normalizeInviteeEmail(input.inviteeEmail),
     inviterIdentityId,
@@ -252,6 +286,19 @@ export async function validateInviteTokenAction(
 
   const supabase = dependencies.supabase ?? getInviteValidationServerClient();
   const tokenHash = hashInviteToken(normalizedToken);
+  const rateLimiter = dependencies.rateLimiter ?? getRateLimiter();
+
+  try {
+    await assertRateLimitAllowed(
+      rateLimiter,
+      rateLimitRules.inviteValidation,
+      scopedRateLimitKey('invite-validation', hashScopedIdentifier('invite-token', tokenHash)),
+      dependencies.now,
+    );
+  } catch (error) {
+    if (error instanceof RateLimitExceededError) return toSafeRateLimitedValidationResult();
+    throw error;
+  }
   const invite = await getInviteByTokenHash(tokenHash, supabase);
 
   if (!invite) {
@@ -298,6 +345,24 @@ export async function redeemInviteAction(
 
   const redeemedByIdentityId = getIdentityId(identity);
   const tokenHash = hashInviteToken(normalizedToken);
+  const rateLimiter = dependencies.rateLimiter ?? getRateLimiter();
+
+  try {
+    await assertRateLimitAllowed(
+      rateLimiter,
+      rateLimitRules.inviteRedemption,
+      scopedRateLimitKey(
+        'invite-redemption',
+        redeemedByIdentityId,
+        hashScopedIdentifier('invite-token', tokenHash),
+      ),
+      now,
+    );
+  } catch (error) {
+    if (error instanceof RateLimitExceededError) return { ok: false, reason: 'invalid-token' };
+    throw error;
+  }
+
   const invite = await getInviteByTokenHash(tokenHash, supabase);
 
   if (!invite) {
