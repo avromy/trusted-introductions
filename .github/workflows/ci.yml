@@ -41,12 +41,20 @@ jobs:
             test -s "$file"
           done
           test -d docs/TechnicalDecisions
+      - name: Validate environment variable presence
+        run: npm run validate:env
+        env:
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: ci-service-role-key
+          SUPABASE_STORAGE_RESUME_BUCKET: private-resumes
       - name: Lint
         run: npm run lint
       - name: Typecheck
         run: npm run typecheck
-      - name: Test
-        run: npm run test
+      - name: Unit tests
+        run: npm run test -- --run
       - name: Build
         run: npm run build
         env:

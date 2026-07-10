@@ -36,14 +36,15 @@ npm run test -- --run
 npm run build
 ```
 
+CI release gates also run `npm run lint`, `npm run validate:env`, and `npm run e2e` when the configured Playwright browser flow is supported. `npm run validate:env` only confirms required variable presence and reports missing variable names; it must never print secret values. Add lockfile-backed installation and dependency audit after committing a maintainable lockfile; this repository currently avoids those gates because registry policy noise prevented creating one safely during this hardening pass.
+
 Additional checks are encouraged when time permits:
 
 ```bash
-npm run lint
 npm run format:check
 ```
 
-Do not deploy if typecheck, tests, or build fail.
+Do not deploy if lint, environment validation, typecheck, tests, build, or configured E2E checks fail.
 
 ## Supabase Migration Process
 
@@ -91,7 +92,7 @@ Complete this checklist before every production deployment:
 - `npm run typecheck`, `npm run test -- --run`, and `npm run build` pass locally or in CI.
 - Deployment diff contains no unintended application route UX changes.
 - Database migrations have been validated locally and rehearsed in staging when present.
-- Environment variables are present in the production host and match this runbook.
+- Environment variables are present in the production host, pass `npm run validate:env` in the release environment, and match this runbook.
 - Supabase auth redirect URLs include the production `NEXT_PUBLIC_APP_URL`.
 - Private storage bucket access is verified for resumes.
 - Current production backup status is known, including restore point and retention window.
@@ -135,7 +136,7 @@ Database rollback is higher risk than application rollback. Do not manually reve
 
 After application deployment and any migrations are complete, verify the production environment from a clean browser session and an operator console:
 
-- Public app loads at `NEXT_PUBLIC_APP_URL` over HTTPS.
+- Public app loads at `NEXT_PUBLIC_APP_URL` over HTTPS with the expected security headers documented in `docs/security/ProductionReadiness.md`.
 - Supabase auth can create or resume a session using approved production auth settings.
 - Invite validation rejects invalid, expired, revoked, blocked, and redeemed invite states safely.
 - Invite-only onboarding can proceed through trusted identity, role/contribution mode, profile, privacy settings, and completion checks.
