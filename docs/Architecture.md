@@ -58,6 +58,22 @@ M2 should add the first product workflow on top of the completed foundation:
 
 M2 should preserve the accepted product decisions in the ADRs, especially the one-person identity model, accountable invite graph, server-enforced privacy, and hashed invite-code handling.
 
+
+## Observability and Logging Rules
+
+Production observability uses the structured logger in `lib/observability` for new logging call sites. The logger contract requires every emitted entry to include an event name, severity level, ISO timestamp, and sanitized metadata, with optional request and actor identifiers for correlation.
+
+Logging must follow these privacy rules:
+
+- Log stable event names such as `invite.created` or `matching.recalculated`; do not log raw user-authored text as an event name.
+- Include request IDs and actor IDs when available so incidents can be investigated without exposing sensitive content.
+- Metadata must be operational and safe: counts, booleans, enum-like status values, IDs already permitted for operators, and timestamps are acceptable.
+- Never log private notes, resume contents or excerpts, contact details, message bodies, email addresses, phone numbers, or free-form user-authored correspondence.
+- Treat nested metadata with the same rules as top-level metadata; unsafe fields must be redacted before they reach the sink.
+- Prefer adding narrow safe metadata fields over passing whole database records, form payloads, or external provider responses into logs.
+
+The logger is intentionally not wired through all application routes yet; new production instrumentation should adopt it incrementally as specific workflows receive observability work.
+
 ## Open Technical Decisions
 
 The M1 foundation selected the primary web stack and Supabase direction. Remaining implementation decisions should be captured in ADRs before production use where they materially affect safety, privacy, operations, or extensibility:
