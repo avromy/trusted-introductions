@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   app:
@@ -25,6 +25,17 @@ jobs:
             npm install --package-lock-only
             npm install
           fi
+      - name: Commit generated lockfile to this PR branch
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && hashFiles('package-lock.json') != ''
+        run: |
+          if git diff --quiet -- package-lock.json && git diff --cached --quiet -- package-lock.json && git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "chore: commit generated npm lockfile"
+          git push origin HEAD:${{ github.head_ref }}
       - name: Upload generated lockfile
         if: ${{ !hashFiles('package-lock.json') == '' }}
         uses: actions/upload-artifact@v4
