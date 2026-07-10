@@ -75,6 +75,7 @@ function createClient(options: {
 }) {
   const inserts: unknown[] = [];
   const auditEvents: unknown[] = [];
+  const notificationEvents: unknown[] = [];
   const introRow = intro();
 
   const client = {
@@ -132,18 +133,26 @@ function createClient(options: {
         return builder;
       }
       if (table === 'audit_events') {
-        return {
+        const builder = {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn(async () => ({ data: null, error: null })),
           insert: vi.fn(async (payload) => {
-            auditEvents.push(payload);
+            if (payload?.event_type === 'introduction_coordination_notification.enqueued') {
+              notificationEvents.push(payload);
+            } else {
+              auditEvents.push(payload);
+            }
             return { error: null };
           }),
         };
+        return builder;
       }
       throw new Error(`Unexpected table ${table}`);
     }),
   } as unknown as CreateIntroductionActionClient;
 
-  return { client, inserts, auditEvents };
+  return { client, inserts, auditEvents, notificationEvents };
 }
 
 describe('introduction repository', () => {
@@ -234,6 +243,56 @@ describe('createIntroductionFromStewardReviewAction', () => {
     ).resolves.toMatchObject({ ok: false, error: 'forbidden' });
     expect(inserts).toHaveLength(0);
     expect(auditEvents).toHaveLength(0);
+  });
+
+  it('enqueues requester and helper coordination notifications after creation', async () => {
+    const { client, notificationEvents } = createClient({ steward: true });
+
+    await createIntroductionFromStewardReviewAction('review-1', { supabase: client, now: NOW });
+
+    expect(notificationEvents).toHaveLength(2);
+    expect(notificationEvents).toEqual([
+      expect.objectContaining({
+        event_type: 'introduction_coordination_notification.enqueued',
+        subject_table: 'introductions',
+        subject_id: 'intro-1',
+        metadata: expect.objectContaining({
+          recipientRole: 'requester',
+          recipientIdentityId: 'requester-1',
+        }),
+      }),
+      expect.objectContaining({
+        event_type: 'introduction_coordination_notification.enqueued',
+        subject_table: 'introductions',
+        subject_id: 'intro-1',
+        metadata: expect.objectContaining({
+          recipientRole: 'helper',
+          recipientIdentityId: 'helper-1',
+        }),
+      }),
+    ]);
+  });
+
+  it('does not enqueue notifications when introduction creation fails', async () => {
+    const { client, notificationEvents } = createClient({ steward: true });
+    vi.mocked(client.from).mockImplementation((table: string) => {
+      if (table === 'introductions') {
+        const builder = {
+          select: vi.fn().mockReturnThis(),
+          insert: vi.fn(() => builder),
+          eq: vi.fn().mockReturnThis(),
+          single: vi.fn(async () => ({ data: null, error: new Error('insert failed') })),
+          maybeSingle: vi.fn(async () => ({ data: null, error: null })),
+        };
+        return builder;
+      }
+      return createClient({ steward: true }).client.from(table as never);
+    });
+
+    await expect(
+      createIntroductionFromStewardReviewAction('review-1', { supabase: client, now: NOW }),
+    ).rejects.toThrow('Failed to create introduction');
+    expect(notificationEvents).toHaveLength(0);
   });
 
   it('creates a privacy-safe audit event', async () => {

@@ -3,9 +3,23 @@
 import { createAuditEventPayload } from '@/lib/audit';
 import { insertAuditEvent, type AuditEventsSupabaseClient } from '@/lib/audit/server';
 import { requireStewardOrAdmin, toSafeAuthFailureResult } from '@/lib/auth/steward';
-import { createIntroduction, type Introduction, type IntroductionRepositoryClient } from '@/lib/introductions/repository';
-import { getJobSeekerRequestById, type JobSeekerRequestRepositoryClient } from '@/lib/matching/job-seeker-repository';
-import { getStewardReviewById, type StewardReviewRepositoryClient } from '@/lib/matching/steward-review-repository';
+import {
+  createIntroduction,
+  type Introduction,
+  type IntroductionRepositoryClient,
+} from '@/lib/introductions/repository';
+import {
+  enqueueIntroductionCoordinationNotifications,
+  type IntroductionCoordinationNotificationOutboxClient,
+} from '@/lib/notifications/introduction/coordination';
+import {
+  getJobSeekerRequestById,
+  type JobSeekerRequestRepositoryClient,
+} from '@/lib/matching/job-seeker-repository';
+import {
+  getStewardReviewById,
+  type StewardReviewRepositoryClient,
+} from '@/lib/matching/steward-review-repository';
 import { createClient } from '@/lib/supabase/server';
 import type { Json } from '@/types/supabase';
 
@@ -18,6 +32,7 @@ export type CreateIntroductionActionClient = IntroductionRepositoryClient &
   StewardReviewRepositoryClient &
   JobSeekerRequestRepositoryClient &
   AuditEventsSupabaseClient &
+  IntroductionCoordinationNotificationOutboxClient &
   Parameters<typeof requireStewardOrAdmin>[0];
 
 function getServerActionClient(): CreateIntroductionActionClient {
@@ -52,11 +67,19 @@ export async function createIntroductionFromStewardReviewAction(
   }
 
   if (review.status !== 'approved') {
-    return { ok: false, error: 'not_approved', message: 'Introductions can only be created from approved steward matches.' };
+    return {
+      ok: false,
+      error: 'not_approved',
+      message: 'Introductions can only be created from approved steward matches.',
+    };
   }
 
   if (!review.matchSuggestionId) {
-    return { ok: false, error: 'invalid_match', message: 'Approved review is not linked to a match suggestion.' };
+    return {
+      ok: false,
+      error: 'invalid_match',
+      message: 'Approved review is not linked to a match suggestion.',
+    };
   }
 
   const request = await getJobSeekerRequestById(review.requestId, supabase);
@@ -76,6 +99,11 @@ export async function createIntroductionFromStewardReviewAction(
       status: 'draft',
       context: safeIntroductionContext(review.id),
     },
+    supabase,
+  );
+
+  await enqueueIntroductionCoordinationNotifications(
+    { introduction, requestHeadline: request.headline, createdAt: options.now },
     supabase,
   );
 
