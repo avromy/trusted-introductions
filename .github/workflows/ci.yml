@@ -21,8 +21,8 @@ jobs:
           cache-dependency-path: package-lock.json
       - name: Install deterministic dependencies
         run: npm ci
-      - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
+      - name: Audit all locked dependencies
+        run: npm audit --audit-level=high
       - name: Validate repository governance and migrations
         id: repository_quality
         run: |
