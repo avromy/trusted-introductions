@@ -17,6 +17,14 @@ export interface Introduction {
   updatedAt: string;
 }
 
+const SENSITIVE_INTRODUCTION_CONTEXT_KEYS = new Set([
+  'message',
+  'messageContent',
+  'message_content',
+  'rawIntroductionMessage',
+  'raw_introduction_message',
+]);
+
 export interface CreateIntroductionInput {
   requestId: string;
   matchId: string;
@@ -50,6 +58,25 @@ function throwIntroductionRepositoryError(operation: string, error: { message?: 
   throw new Error(`Failed to ${operation}: ${error.message ?? 'unknown Supabase error'}`);
 }
 
+function isJsonRecord(value: Json): value is Record<string, Json> {
+  return Object.prototype.toString.call(value) === '[object Object]';
+}
+
+function sanitizeIntroductionContextValue(value: Json): Json {
+  if (Array.isArray(value)) return value.map(sanitizeIntroductionContextValue);
+  if (!isJsonRecord(value)) return value;
+  return Object.entries(value).reduce<Record<string, Json>>((safe, [key, entry]) => {
+    if (!SENSITIVE_INTRODUCTION_CONTEXT_KEYS.has(key)) {
+      safe[key] = sanitizeIntroductionContextValue(entry);
+    }
+    return safe;
+  }, {});
+}
+
+export function sanitizeIntroductionContext(context: Json | undefined): Json {
+  return sanitizeIntroductionContextValue(context ?? {});
+}
+
 export function mapIntroductionRow(row: IntroductionRow): Introduction {
   return {
     id: row.id,
@@ -60,7 +87,7 @@ export function mapIntroductionRow(row: IntroductionRow): Introduction {
     helperIdentityId: row.helper_identity_id,
     createdByIdentityId: row.created_by_identity_id,
     status: row.status,
-    context: row.context,
+    context: sanitizeIntroductionContext(row.context),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -75,7 +102,7 @@ function normalizeCreateIntroductionInput(input: CreateIntroductionInput): Omit<
     helper_identity_id: input.helperIdentityId.trim(),
     created_by_identity_id: input.createdByIdentityId.trim(),
     status: input.status ?? 'draft',
-    context: input.context ?? {},
+    context: sanitizeIntroductionContext(input.context),
   };
 }
 
@@ -89,10 +116,7 @@ export async function createIntroduction(
     .select('*')
     .single();
 
-  if (error) {
-    throwIntroductionRepositoryError('create introduction', error);
-  }
-
+  if (error) throwIntroductionRepositoryError('create introduction', error);
   return mapIntroductionRow(data);
 }
 
@@ -106,9 +130,6 @@ export async function getIntroductionById(
     .eq('id', introductionId.trim())
     .maybeSingle();
 
-  if (error) {
-    throwIntroductionRepositoryError('get introduction by id', error);
-  }
-
+  if (error) throwIntroductionRepositoryError('get introduction by id', error);
   return data ? mapIntroductionRow(data) : null;
 }
