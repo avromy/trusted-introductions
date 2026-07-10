@@ -144,6 +144,29 @@ export interface Database {
           updated_at: string;
         };
       };
+      notification_preferences: {
+        Row: {
+          created_at: string;
+          follow_up_reminders_enabled: boolean;
+          id: string;
+          identity_id: string;
+          introduction_coordination_enabled: boolean;
+          operational_invites_enabled: boolean;
+          outcome_prompts_enabled: boolean;
+          updated_at: string;
+        };
+      };
+      notification_unsubscribes: {
+        Row: {
+          created_at: string;
+          expires_at: string | null;
+          id: string;
+          identity_id: string;
+          scope: Database['public']['Enums']['notification_unsubscribe_scope'];
+          token_hash: string;
+          used_at: string | null;
+        };
+      };
       privacy_settings: {
         Row: {
           allow_ai_summary: boolean;
@@ -192,6 +215,7 @@ export interface Database {
       invitation_status: 'pending' | 'accepted' | 'expired' | 'revoked';
       job_seeker_request_status: 'draft' | 'open' | 'paused' | 'matched' | 'closed' | 'withdrawn';
       invite_redemption_status: 'not_redeemed' | 'redeemed' | 'blocked';
+      notification_unsubscribe_scope: 'follow_up_reminders' | 'outcome_prompts' | 'all_optional';
       privacy_visibility: 'private' | 'community' | 'stewards';
       steward_review_status: 'pending' | 'approved' | 'rejected' | 'needs_info';
       trusted_identity_status: 'pending' | 'active' | 'suspended' | 'archived';
