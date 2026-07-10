@@ -1,3 +1,4 @@
+import React from 'react';
 import { Card } from '@/components/ui';
 import { calculateOnboardingProgress } from '@/lib/onboarding';
 import { createClient } from '@/lib/supabase/server';

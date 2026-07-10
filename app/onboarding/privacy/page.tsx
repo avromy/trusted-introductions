@@ -1,3 +1,4 @@
+import React from 'react';
 import { getDefaultPrivacySettings, mapPrivacySettingsRow } from '@/lib/privacy';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/types/supabase';
