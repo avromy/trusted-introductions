@@ -5,7 +5,9 @@ import { requireStewardOrAdmin } from '@/lib/auth/steward';
 import { listAuditDashboardEvents, type AuditDashboardClient } from '@/lib/audit/dashboard';
 import { createClient } from '@/lib/supabase/server';
 
-function value(searchParams: Record<string, string | string[] | undefined>, key: string): string | undefined {
+type AuditSearchParams = Record<string, string | string[] | undefined>;
+
+function value(searchParams: AuditSearchParams, key: string): string | undefined {
   const raw = searchParams[key];
   return Array.isArray(raw) ? raw[0] : raw;
 }
@@ -16,7 +18,8 @@ function MetadataList({ metadata }: { metadata: Record<string, unknown> }) {
   return <dl className="flex flex-wrap gap-2">{entries.map(([key, val]) => <div key={key} className="rounded-2xl bg-sage/50 px-3 py-2"><dt className="text-[0.65rem] uppercase tracking-wide text-trust">{key}</dt><dd className="text-xs text-ink">{String(val)}</dd></div>)}</dl>;
 }
 
-export default async function AuditDashboardPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+export default async function AuditDashboardPage({ searchParams }: { searchParams: Promise<AuditSearchParams> }) {
+  const resolvedSearchParams = await searchParams;
   const supabase = createClient() as unknown as NonNullable<Parameters<typeof requireStewardOrAdmin>[0]> & AuditDashboardClient;
 
   try {
@@ -26,13 +29,13 @@ export default async function AuditDashboardPage({ searchParams }: { searchParam
   }
 
   const page = await listAuditDashboardEvents(supabase, {
-    eventType: value(searchParams, 'eventType'),
-    actorType: value(searchParams, 'actorType'),
-    targetType: value(searchParams, 'targetType'),
-    startDate: value(searchParams, 'startDate'),
-    endDate: value(searchParams, 'endDate'),
-    page: Number(value(searchParams, 'page')),
-    pageSize: Number(value(searchParams, 'pageSize')),
+    eventType: value(resolvedSearchParams, 'eventType'),
+    actorType: value(resolvedSearchParams, 'actorType'),
+    targetType: value(resolvedSearchParams, 'targetType'),
+    startDate: value(resolvedSearchParams, 'startDate'),
+    endDate: value(resolvedSearchParams, 'endDate'),
+    page: Number(value(resolvedSearchParams, 'page')),
+    pageSize: Number(value(resolvedSearchParams, 'pageSize')),
   });
 
   return (
