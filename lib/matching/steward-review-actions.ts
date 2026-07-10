@@ -52,7 +52,11 @@ export async function createStewardReviewAction(
     return toSafeAuthFailureResult(error);
   }
 
-  const review = await createStewardReview({ ...input, stewardIdentityId: input.stewardIdentityId || identity.id }, supabase);
+  if (input.stewardIdentityId && input.stewardIdentityId !== identity.id) {
+    return { ok: false, error: 'forbidden', message: 'Only the assigned steward can create this review.' };
+  }
+
+  const review = await createStewardReview({ ...input, stewardIdentityId: identity.id }, supabase);
 
   await insertAuditEvent(
     supabase,

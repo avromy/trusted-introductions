@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { decideStewardReviewAction, type StewardReviewActionClient } from '@/lib/matching/steward-review-actions';
+import { createStewardReviewAction, decideStewardReviewAction, type StewardReviewActionClient } from '@/lib/matching/steward-review-actions';
 import { createStewardReview, listStewardReviewsForRequest, mapStewardReviewRow, type StewardReviewRow } from '@/lib/matching/steward-review-repository';
 
 const NOW = new Date('2026-01-01T00:00:00.000Z');
@@ -68,11 +68,52 @@ describe('steward review repository helpers', () => {
   });
 });
 
+describe('createStewardReviewAction', () => {
+  it('requires steward authorization before creating reviews', async () => {
+    const { client, inserts, auditEvents } = createClient({ steward: false });
+
+    await expect(
+      createStewardReviewAction(
+        { requestId: 'request-1', stewardIdentityId: 'steward-1', subjectIdentityId: 'helper-1' },
+        { supabase: client, now: NOW },
+      ),
+    ).resolves.toMatchObject({ ok: false, error: 'forbidden' });
+    expect(inserts).toHaveLength(0);
+    expect(auditEvents).toHaveLength(0);
+  });
+
+  it('does not allow creating reviews assigned to another steward', async () => {
+    const { client, inserts, auditEvents } = createClient({ steward: true });
+
+    const result = await createStewardReviewAction(
+      { requestId: 'request-1', stewardIdentityId: 'steward-other', subjectIdentityId: 'helper-1' },
+      { supabase: client, now: NOW },
+    );
+
+    expect(result).toMatchObject({ ok: false, error: 'forbidden' });
+    expect(inserts).toHaveLength(0);
+    expect(auditEvents).toHaveLength(0);
+  });
+});
+
 describe('decideStewardReviewAction', () => {
   it('requires steward authorization', async () => {
     const { client, updates, auditEvents } = createClient({ steward: false });
 
     await expect(decideStewardReviewAction('review-1', 'approved', { supabase: client, now: NOW })).resolves.toMatchObject({ ok: false, error: 'forbidden' });
+    expect(updates).toHaveLength(0);
+    expect(auditEvents).toHaveLength(0);
+  });
+
+  it('blocks decisions from stewards who are not assigned to the review', async () => {
+    const { client, updates, auditEvents } = createClient({
+      steward: true,
+      review: row({ steward_identity_id: 'steward-other' }),
+    });
+
+    await expect(
+      decideStewardReviewAction('review-1', 'approved', { supabase: client, now: NOW }),
+    ).resolves.toMatchObject({ ok: false, error: 'invalid_decision' });
     expect(updates).toHaveLength(0);
     expect(auditEvents).toHaveLength(0);
   });

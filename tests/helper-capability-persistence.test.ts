@@ -223,6 +223,24 @@ describe('upsertHelperCapabilityAction', () => {
     expect(auditEvents).toEqual([]);
   });
 
+  it('ignores caller-supplied owner identities when upserting capabilities', async () => {
+    const { client, upserts, auditEvents } = createActionClient({
+      user: { id: 'user-123', email: 'person@example.com' },
+      identity: { id: 'identity-123', status: 'active' },
+    });
+
+    await expect(
+      upsertHelperCapabilityAction(
+        { categories: ['resume_review'], identityId: 'identity-other' } as never,
+        { supabase: client, now: NOW },
+      ),
+    ).resolves.toMatchObject({ ok: true });
+
+    expect(upserts[0]).toMatchObject({ identity_id: 'identity-123' });
+    expect(JSON.stringify(upserts)).not.toContain('identity-other');
+    expect(auditEvents[0]).toMatchObject({ actor_id: 'identity-123' });
+  });
+
   it('persists owner identity, writes audit, and returns privacy-safe data', async () => {
     const { client, upserts, auditEvents } = createActionClient({
       user: { id: 'user-123', email: 'person@example.com' },
