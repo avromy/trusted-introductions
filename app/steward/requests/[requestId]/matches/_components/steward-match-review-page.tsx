@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { Badge, Button, Card } from '@/components/ui';
+import { createIntroductionFromStewardReviewAction } from '@/lib/introductions/actions';
 import { decideStewardReviewAction } from '@/lib/matching/steward-review-actions';
 import { recalculateMatchSuggestionsAction } from '@/lib/matching/match-actions';
 import type { MatchSuggestion, StewardReview, StewardReviewStatus } from '@/types/matching';
@@ -39,6 +40,13 @@ async function decideReview(formData: FormData) {
   const decision = String(formData.get('decision') ?? '') as Exclude<StewardReviewStatus, 'pending'>;
   const decisionReason = String(formData.get('decisionReason') ?? '');
   await decideStewardReviewAction(reviewId, decision, { decisionReason });
+}
+
+async function createIntroduction(formData: FormData) {
+  'use server';
+
+  const reviewId = String(formData.get('reviewId') ?? '');
+  await createIntroductionFromStewardReviewAction(reviewId);
 }
 
 async function recalculateMatches(formData: FormData) {
@@ -93,6 +101,8 @@ export function StewardMatchReviewPage({
         <div className="mt-8 grid gap-5">
           {matches.map(({ suggestion, review }) => {
             const status = review?.status ?? 'unreviewed';
+            const decisionIsOpen = status === 'pending' || status === 'needs_info';
+
             return (
               <Card key={suggestion.id} className="overflow-hidden">
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -106,12 +116,18 @@ export function StewardMatchReviewPage({
                         <h2 className="text-xl font-semibold text-ink">#{suggestion.rank} helper {suggestion.helperIdentityId}</h2>
                         <Badge className={statusClasses[status]}>{statusLabels[status]}</Badge>
                       </div>
+                      {review && status === 'approved' ? (
+                        <form action={createIntroduction} className="mt-3">
+                          <input name="reviewId" type="hidden" value={review.id} />
+                          <Button type="submit" variant="secondary">Create introduction</Button>
+                        </form>
+                      ) : null}
                       <p className="mt-2 text-sm text-ink/60">Capability {suggestion.helperCapabilityId}</p>
                       {review?.decisionReason ? <p className="mt-3 rounded-2xl bg-sage/40 p-3 text-sm text-ink/75">Decision note: {review.decisionReason}</p> : null}
                     </div>
                   </div>
 
-                  {review ? (
+                  {review && decisionIsOpen ? (
                     <form action={decideReview} className="grid gap-3 rounded-3xl bg-sage/30 p-4 sm:min-w-80">
                       <input name="reviewId" type="hidden" value={review.id} />
                       <label className="text-sm font-semibold text-ink" htmlFor={`reason-${review.id}`}>Decision note</label>
@@ -122,6 +138,8 @@ export function StewardMatchReviewPage({
                         <Button name="decision" type="submit" value="needs_info" variant="ghost">Needs info</Button>
                       </div>
                     </form>
+                  ) : review ? (
+                    <div className="rounded-3xl bg-sage/30 p-4 text-sm text-ink/70 sm:min-w-72">This steward decision is finalized and cannot be changed.</div>
                   ) : (
                     <div className="rounded-3xl bg-sage/30 p-4 text-sm text-ink/70 sm:min-w-72">Create a steward review before recording a decision for this match.</div>
                   )}
