@@ -144,6 +144,25 @@ export interface Database {
           updated_at: string;
         };
       };
+      notification_outbox: {
+        Row: {
+          attempt_count: number;
+          category: string;
+          channel: Database['public']['Enums']['notification_outbox_channel'];
+          created_at: string;
+          destination_ref: string;
+          failure_classification: Database['public']['Enums']['notification_failure_classification'] | null;
+          id: string;
+          idempotency_key: string;
+          metadata: Json;
+          next_attempt_at: string;
+          recipient_identity_id: string | null;
+          sent_at: string | null;
+          status: Database['public']['Enums']['notification_outbox_status'];
+          template_payload: Json;
+          updated_at: string;
+        };
+      };
       privacy_settings: {
         Row: {
           allow_ai_summary: boolean;
@@ -190,6 +209,9 @@ export interface Database {
       affiliation_type: 'member' | 'alumni' | 'employee' | 'volunteer' | 'partner' | 'other';
       introduction_status: 'draft' | 'ready' | 'completed' | 'canceled';
       invitation_status: 'pending' | 'accepted' | 'expired' | 'revoked';
+      notification_failure_classification: 'transient' | 'permanent' | 'provider' | 'rate_limited' | 'unknown';
+      notification_outbox_channel: 'email' | 'sms' | 'push' | 'webhook';
+      notification_outbox_status: 'pending' | 'processing' | 'sent' | 'failed' | 'canceled';
       job_seeker_request_status: 'draft' | 'open' | 'paused' | 'matched' | 'closed' | 'withdrawn';
       invite_redemption_status: 'not_redeemed' | 'redeemed' | 'blocked';
       privacy_visibility: 'private' | 'community' | 'stewards';
