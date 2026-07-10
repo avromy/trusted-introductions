@@ -98,6 +98,17 @@ function createFakeClient({ user, identities = [] }: FakeClientOptions) {
 }
 
 describe('ensureCurrentTrustedIdentityAction', () => {
+  it('rejects unauthenticated identity creation attempts without writing', async () => {
+    const { client, state } = createFakeClient({ user: null });
+
+    await expect(ensureCurrentTrustedIdentityAction(client)).rejects.toMatchObject({
+      code: 'AUTH_REQUIRED',
+    });
+
+    expect(state.insertedIdentities).toEqual([]);
+    expect(state.auditEvents).toEqual([]);
+  });
+
   it('creates a normalized trusted identity and audit event for the current user when missing', async () => {
     const { client, state } = createFakeClient({
       user: { id: 'user-1', email: ' Person@Example.COM ' },

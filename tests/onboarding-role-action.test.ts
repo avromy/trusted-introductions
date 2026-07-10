@@ -130,6 +130,51 @@ describe('saveOnboardingRoleAction', () => {
     expect(supabase.auditInsert).not.toHaveBeenCalled();
   });
 
+  it('ignores client-supplied identity ids and only updates roles for the current trusted identity', async () => {
+    const supabase = createMockSupabase({
+      identity: { id: 'current-identity', user_id: 'user-123', status: 'active' },
+    });
+    mockCreateClient.mockReturnValue(supabase);
+
+    await saveOnboardingRoleAction({
+      selectedRoles: ['member'],
+      contributionMode: 'helper',
+      identityId: 'attacker-controlled-identity',
+    } as never);
+
+    expect(supabase.roleDeleteEq).toHaveBeenCalledWith('identity_id', 'current-identity');
+    expect(supabase.roleInsert).toHaveBeenCalledWith([
+      expect.objectContaining({ identity_id: 'current-identity' }),
+    ]);
+    expect(supabase.profileUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ identity_id: 'current-identity' }),
+      { onConflict: 'identity_id' },
+    );
+    expect(JSON.stringify(supabase.roleInsert.mock.calls)).not.toContain(
+      'attacker-controlled-identity',
+    );
+  });
+
+  it('rejects inactive trusted identities before mutating roles or profile contribution mode', async () => {
+    const supabase = createMockSupabase({
+      identity: { id: 'identity-123', user_id: 'user-123', status: 'suspended' },
+    });
+    mockCreateClient.mockReturnValue(supabase);
+
+    const result = await saveOnboardingRoleAction({
+      selectedRoles: ['member'],
+      contributionMode: 'job_seeker',
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'An active trusted identity is required to choose onboarding roles.',
+    });
+    expect(supabase.roleInsert).not.toHaveBeenCalled();
+    expect(supabase.profileUpsert).not.toHaveBeenCalled();
+    expect(supabase.auditInsert).not.toHaveBeenCalled();
+  });
+
   it('persists member role and contribution mode, audits the save, and returns safe data', async () => {
     const supabase = createMockSupabase();
     mockCreateClient.mockReturnValue(supabase);

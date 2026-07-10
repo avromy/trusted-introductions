@@ -1,11 +1,33 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createInviteAction, type InviteCreationSupabaseClient } from '@/lib/invites/actions';
-import { compareInviteTokenHash } from '@/lib/invites';
+import {
+  createInviteAction,
+  redeemInviteAction,
+  type InviteCreationSupabaseClient,
+  type InviteRedemptionSupabaseClient,
+} from '@/lib/invites/actions';
+import { compareInviteTokenHash, hashInviteToken } from '@/lib/invites';
+import type { Database } from '@/types/supabase';
 
 const NOW = new Date('2026-07-07T12:00:00.000Z');
 
 type InsertedInvite = Parameters<ReturnType<InviteCreationSupabaseClient['from']>['insert']>[0];
+type InvitationRow = Database['public']['Tables']['invitations']['Row'];
+
+const invitationRow: InvitationRow = {
+  id: 'invite-123',
+  invitee_email: 'invitee@example.com',
+  inviter_identity_id: 'identity-inviter',
+  community_id: 'community-123',
+  token_hash: hashInviteToken('plaintext-invite-token'),
+  status: 'pending',
+  redemption_status: 'not_redeemed',
+  expires_at: '2026-07-14T12:00:00.000Z',
+  redeemed_at: null,
+  redeemed_by_identity_id: null,
+  created_at: NOW.toISOString(),
+  updated_at: NOW.toISOString(),
+};
 
 function mockInviteCreationClient(options: {
   user?: Awaited<ReturnType<InviteCreationSupabaseClient['auth']['getUser']>>['data']['user'];
@@ -52,6 +74,47 @@ function mockInviteCreationClient(options: {
   return { client, insertedInvites, auditEvents };
 }
 
+function mockInviteRedemptionClient(user: Awaited<ReturnType<InviteRedemptionSupabaseClient['auth']['getUser']>>['data']['user']) {
+  const updates: unknown[] = [];
+  const auditEvents: unknown[] = [];
+
+  const builder = {
+    select: vi.fn(() => builder),
+    eq: vi.fn(() => builder),
+    maybeSingle: vi.fn(async () => ({ data: invitationRow, error: null })),
+    update: vi.fn((payload: unknown) => {
+      updates.push(payload);
+      return builder;
+    }),
+    single: vi.fn(async () => ({
+      data: { ...invitationRow, ...(updates.at(-1) as Record<string, unknown> | undefined) },
+      error: null,
+    })),
+    insert: vi.fn(() => builder),
+    order: vi.fn(async () => ({ data: [invitationRow], error: null })),
+  };
+
+  const client = {
+    auth: {
+      getUser: vi.fn(async () => ({ data: { user }, error: null })),
+    },
+    from: vi.fn((table: 'invitations' | 'audit_events') => {
+      if (table === 'audit_events') {
+        return {
+          insert: async (payload: unknown) => {
+            auditEvents.push(payload);
+            return { error: null };
+          },
+        };
+      }
+
+      return builder;
+    }),
+  } as unknown as InviteRedemptionSupabaseClient;
+
+  return { client, updates, auditEvents, builder };
+}
+
 describe('createInviteAction', () => {
   it('requires a current authenticated identity', async () => {
     const { client } = mockInviteCreationClient({ user: null });
@@ -59,6 +122,17 @@ describe('createInviteAction', () => {
     await expect(
       createInviteAction({ inviteeEmail: 'invitee@example.com' }, { supabase: client, now: NOW }),
     ).rejects.toMatchObject({ code: 'AUTH_IDENTITY_REQUIRED' });
+  });
+
+  it('does not write invites or audit events for unauthenticated creation attempts', async () => {
+    const { client, insertedInvites, auditEvents } = mockInviteCreationClient({ user: null });
+
+    await expect(
+      createInviteAction({ inviteeEmail: 'invitee@example.com' }, { supabase: client, now: NOW }),
+    ).rejects.toMatchObject({ code: 'AUTH_IDENTITY_REQUIRED' });
+
+    expect(insertedInvites).toEqual([]);
+    expect(auditEvents).toEqual([]);
   });
 
   it('creates a hashed invite, writes audit event, and returns plaintext token only once', async () => {
@@ -116,5 +190,19 @@ describe('createInviteAction', () => {
     expect(JSON.stringify(insertedInvites)).not.toContain(result.plaintextToken);
     expect(JSON.stringify(auditEvents)).not.toContain(result.plaintextToken);
     expect(JSON.stringify(result).match(new RegExp(result.plaintextToken, 'g'))).toHaveLength(1);
+  });
+});
+
+describe('redeemInviteAction', () => {
+  it('rejects unauthenticated redemption attempts without reading or mutating invites', async () => {
+    const { client, updates, auditEvents, builder } = mockInviteRedemptionClient(null);
+
+    await expect(
+      redeemInviteAction('plaintext-invite-token', { supabase: client, now: NOW }),
+    ).resolves.toEqual({ ok: false, reason: 'auth-required' });
+
+    expect(builder.maybeSingle).not.toHaveBeenCalled();
+    expect(updates).toEqual([]);
+    expect(auditEvents).toEqual([]);
   });
 });
