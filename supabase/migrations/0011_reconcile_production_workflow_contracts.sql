@@ -1,7 +1,6 @@
--- Reconcile the canonical 0009 production RLS/workflow migration with application contracts.
--- This migration is intentionally forward-only and assumes 0009_production_rls_and_workflow_persistence.sql ran first.
+-- Reconcile the canonical production RLS/workflow migration with application contracts.
+-- Enum compatibility is handled by 0010_workflow_enum_compatibility.sql.
 
--- Security-definer helpers must not remain executable by PUBLIC.
 revoke all on function public.current_identity_id() from public;
 revoke all on function public.has_role(public.user_role_name, uuid) from public;
 revoke all on function public.is_steward_or_admin(uuid) from public;
@@ -9,12 +8,6 @@ grant execute on function public.current_identity_id() to authenticated;
 grant execute on function public.has_role(public.user_role_name, uuid) to authenticated;
 grant execute on function public.is_steward_or_admin(uuid) to authenticated;
 
--- Keep durable workflow enums compatible with the application vocabulary.
-alter type public.follow_up_status add value if not exists 'sent';
-alter type public.introduction_outcome_type add value if not exists 'in_conversation';
-alter type public.introduction_outcome_type add value if not exists 'opportunity_created';
-
--- Protect reminder integrity without recreating the workflow table.
 do $$
 begin
   if not exists (
@@ -32,7 +25,6 @@ $$;
 alter table public.introduction_follow_ups
   validate constraint introduction_follow_ups_future;
 
--- Permit the matched helper and request owner to read their suggestion while preserving operator access.
 create policy match_suggestions_read_participants on public.match_suggestions
 for select to authenticated using (
   helper_identity_id = public.current_identity_id()
