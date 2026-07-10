@@ -112,6 +112,7 @@ Append-only record for sensitive onboarding actions.
 - Foreign keys connect roles, invitations, affiliations, privacy settings, and audit events to trusted identities and communities.
 - Indexes support invite token lookup, identity lookup, community lookup, and audit lookup.
 - Row level security is enabled on M2 domain tables. Complex access policies are intentionally deferred.
+- Production RLS and authorization requirements are inventoried in [Production RLS/Auth Policy Audit](security/RLSAudit.md).
 
 ## MVP Matching Entity
 
