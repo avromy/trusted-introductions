@@ -99,6 +99,40 @@ describe('saveOnboardingProfileAction', () => {
     expect(supabase.auditInsert).not.toHaveBeenCalled();
   });
 
+  it('ignores client-supplied identity ids and only updates the current trusted identity profile', async () => {
+    const supabase = createMockSupabase({
+      trustedIdentity: { id: 'current-identity', user_id: 'user-123', status: 'active' },
+    });
+    mockCreateClient.mockReturnValue(supabase);
+
+    await saveOnboardingProfileAction({
+      displayName: 'Ada Lovelace',
+      identityId: 'attacker-controlled-identity',
+    } as never);
+
+    expect(supabase.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ identity_id: 'current-identity' }),
+      { onConflict: 'identity_id' },
+    );
+    expect(JSON.stringify(supabase.upsert.mock.calls)).not.toContain(
+      'attacker-controlled-identity',
+    );
+  });
+
+  it('rejects inactive trusted identities before mutating profiles', async () => {
+    const supabase = createMockSupabase({
+      trustedIdentity: { id: 'identity-123', user_id: 'user-123', status: 'suspended' },
+    });
+    mockCreateClient.mockReturnValue(supabase);
+
+    await expect(
+      saveOnboardingProfileAction({ displayName: 'Ada Lovelace' }),
+    ).rejects.toThrow('An active trusted identity is required to set up a profile.');
+
+    expect(supabase.upsert).not.toHaveBeenCalled();
+    expect(supabase.auditInsert).not.toHaveBeenCalled();
+  });
+
   it('upserts the profile, writes an audit event, and returns a safe result', async () => {
     const supabase = createMockSupabase();
     mockCreateClient.mockReturnValue(supabase);

@@ -109,6 +109,45 @@ describe('savePrivacySettingsAction', () => {
     expect(mockCreateClient).not.toHaveBeenCalled();
   });
 
+  it('ignores client-supplied identity ids and only updates privacy for the current identity', async () => {
+    const supabase = createSupabaseMock('current-identity');
+    mockCreateClient.mockReturnValueOnce(supabase.client);
+
+    await savePrivacySettingsAction({
+      profileVisibility: 'members',
+      identityId: 'attacker-controlled-identity',
+    } as never);
+
+    expect(supabase.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ identity_id: 'current-identity' }),
+      { onConflict: 'identity_id' },
+    );
+    expect(JSON.stringify(supabase.upsert.mock.calls)).not.toContain(
+      'attacker-controlled-identity',
+    );
+  });
+
+  it('rejects identities without a usable trusted identity id before mutating privacy settings', async () => {
+    const supabase = createSupabaseMock('');
+    mockCreateClient.mockReturnValueOnce(supabase.client);
+
+    await expect(savePrivacySettingsAction({ profileVisibility: 'members' })).resolves.toEqual({
+      ok: false,
+      error: 'A trusted identity id is required.',
+      settings: {
+        profileVisibility: 'private',
+        resumeVisibility: 'private',
+        contactVisibility: 'private',
+        publicMeetPageEnabled: false,
+        helperActivityVisible: false,
+        allowAiSummary: false,
+      },
+    });
+
+    expect(supabase.upsert).not.toHaveBeenCalled();
+    expect(supabase.insert).not.toHaveBeenCalled();
+  });
+
   it('writes an audit event and returns only safe settings', async () => {
     const supabase = createSupabaseMock('identity-safe');
     mockCreateClient.mockReturnValueOnce(supabase.client);
