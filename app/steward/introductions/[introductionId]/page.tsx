@@ -4,7 +4,7 @@ import { getIntroductionById } from '@/lib/introductions/repository';
 import { IntroductionDetail, StateCard } from './introduction-detail';
 
 interface StewardIntroductionPageProps {
-  params: { introductionId: string };
+  params: Promise<{ introductionId: string }>;
 }
 
 export default async function StewardIntroductionPage({ params }: StewardIntroductionPageProps) {
@@ -24,7 +24,8 @@ export default async function StewardIntroductionPage({ params }: StewardIntrodu
   }
 
   try {
-    const introduction = await getIntroductionById(params.introductionId);
+    const { introductionId } = await params;
+    const introduction = await getIntroductionById(introductionId);
 
     if (!introduction) {
       return <StateCard state="empty" />;
