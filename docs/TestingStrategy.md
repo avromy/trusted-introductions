@@ -2,9 +2,9 @@
 
 ## Current Status
 
-The repository has Vitest coverage for domain logic, repositories, server actions, onboarding state, and selected React components. Browser end-to-end (E2E) tests are not enabled yet because the production UX routes and authenticated flows are still evolving.
+The repository has Vitest coverage for domain logic, repositories, server actions, onboarding state, selected React components, and a Playwright browser E2E foundation. Browser tests are intentionally small while production UX routes and authenticated flows continue to evolve.
 
-This strategy intentionally separates durable E2E coverage from brittle full-flow automation. Until routes, copy, and UX states are finalized, browser tests should validate stable route contracts, critical page affordances, and mocked happy-path transitions instead of attempting a complete production journey across every role.
+This strategy separates durable E2E coverage from brittle full-flow automation. Browser tests should validate stable route contracts, critical page affordances, and fixture-backed happy-path transitions instead of attempting a complete production journey across every role.
 
 ## Required Check Categories
 
@@ -13,7 +13,7 @@ This strategy intentionally separates durable E2E coverage from brittle full-flo
 - Typechecking.
 - Unit tests.
 - Integration tests for API and database behavior.
-- Browser E2E tests for critical cross-role flows once production UX routes stabilize.
+- Browser E2E tests for stable route contracts and critical cross-role flows.
 - Build verification.
 
 ## Current Automated Commands
@@ -24,7 +24,54 @@ Run these checks before merging application or test changes:
 npm run typecheck
 npm run test -- --run
 npm run build
+npm run e2e
 ```
+
+Playwright remains separate from Vitest: Vitest tests live under `tests/*.test.ts(x)`, while browser tests live under `tests/e2e/*.spec.js` and run only through Playwright.
+
+## Browser E2E Foundation
+
+Playwright is configured in `playwright.config.js` with deterministic local defaults:
+
+- Chromium is the initial project to keep CI fast and focused.
+- The default base URL is `http://127.0.0.1:3000` and can be overridden with `E2E_BASE_URL`.
+- The Playwright web server starts `npm run dev` with local-only Supabase placeholder values so route-smoke tests do not require production secrets.
+- Locale and timezone are fixed to `en-US` and `UTC`.
+- CI runs serially with retries; local runs may reuse an existing server.
+- Traces, screenshots, and videos are retained only for failure-oriented debugging.
+
+Available commands:
+
+```bash
+npm run e2e
+npm run e2e:headed
+npm run e2e:ui
+```
+
+Before the first local run, install browser binaries:
+
+```bash
+npx playwright install chromium
+```
+
+In GitHub Actions, the CI workflow installs Chromium and system dependencies with:
+
+```bash
+npx playwright install --with-deps chromium
+```
+
+## Supabase Authentication Fixture Strategy
+
+Reusable E2E fixtures live under `tests/e2e/fixtures/`:
+
+- `auth.js` provides an authenticated-session seam without embedding production Supabase secrets. It currently stores deterministic test-user metadata in browser storage under an E2E-specific key. Future Supabase-backed tests should replace or extend this seam with generated storage state from a local Supabase auth instance or a test-only service-role seeding endpoint.
+- `data.js` provides deterministic record builders and a cleanup convention. Any database-backed E2E records must include the `cleanupTag: "trusted-introductions-e2e"` marker so cleanup routines can delete only records owned by browser tests.
+
+Do not commit production credentials, production storage state, or personally identifiable fixture data. CI should use local, fake, or ephemeral Supabase configuration for route-smoke coverage unless a dedicated test environment is explicitly provisioned.
+
+## Current Browser Smoke Coverage
+
+The initial executable browser suite contains a health-route HTTP smoke test. It verifies that `/api/health` returns an OK JSON payload with safe cache behavior and expected dependency keys. This provides a low-risk CI signal without automating unfinished product flows.
 
 ## Critical Flows To Test
 
@@ -37,51 +84,6 @@ npm run build
 - Introduction workflow transitions.
 - Follow-up reminders and response collection.
 - Outcome recording.
-
-## Browser E2E Recommendation
-
-Use [Playwright](https://playwright.dev/) for browser E2E once the production UX routes are finalized. Playwright is the recommended framework because it supports Chromium, Firefox, and WebKit; provides reliable auto-waiting; can run authenticated storage-state scenarios; and integrates cleanly with Next.js by starting the app through a `webServer` command.
-
-No Playwright dependency or config is added in this task. Adding the framework now would introduce package and lockfile churn before stable route contracts exist, while creating placeholder tests would encourage brittle selectors and full-flow assumptions. The initial scaffold is therefore documentation-only and should be converted to executable tests when each route below has stable semantics and test fixtures.
-
-When enabling Playwright, prefer the smallest safe setup:
-
-```bash
-npm install --save-dev @playwright/test
-npx playwright install --with-deps chromium
-```
-
-Suggested initial config:
-
-```ts
-// playwright.config.ts
-import { defineConfig, devices } from '@playwright/test';
-
-export default defineConfig({
-  testDir: './tests/e2e',
-  retries: process.env.CI ? 2 : 0,
-  use: {
-    baseURL: process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3000',
-    trace: 'on-first-retry',
-  },
-  webServer: {
-    command: 'npm run build && npm run start',
-    url: 'http://127.0.0.1:3000',
-    reuseExistingServer: !process.env.CI,
-  },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-});
-```
-
-Add an `e2e` script only after the first durable tests land:
-
-```json
-{
-  "scripts": {
-    "test:e2e": "playwright test"
-  }
-}
-```
 
 ## Browser E2E Coverage Plan
 
