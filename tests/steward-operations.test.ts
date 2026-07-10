@@ -56,22 +56,22 @@ describe('steward operations queue classification', () => {
 describe('steward operations route rendering', () => {
   it('renders unauthorized state', async () => {
     vi.mocked(getStewardOperationsQueue).mockResolvedValueOnce({ ok: false, state: 'unauthorized', message: 'Nope' });
-    const markup = renderToStaticMarkup(await StewardOperationsPage({ searchParams: {} }));
+    const markup = renderToStaticMarkup(await StewardOperationsPage({ searchParams: Promise.resolve({}) }));
     expect(markup).toContain('Steward access required');
   });
 
   it('renders error state', async () => {
     vi.mocked(getStewardOperationsQueue).mockResolvedValueOnce({ ok: false, state: 'error', message: 'Queue failed' });
-    const markup = renderToStaticMarkup(await StewardOperationsPage({ searchParams: {} }));
+    const markup = renderToStaticMarkup(await StewardOperationsPage({ searchParams: Promise.resolve({}) }));
     expect(markup).toContain('Queue unavailable');
     expect(markup).toContain('Queue failed');
   });
 
   it('renders empty and populated queue states', async () => {
     vi.mocked(getStewardOperationsQueue).mockResolvedValueOnce({ ok: true, queue: { counts: { requests_awaiting_match_review: 0, reviews_needing_information: 0, approved_matches_awaiting_introduction: 0, introductions_needing_follow_up: 0, introductions_awaiting_outcome: 0 }, pagination: { limit: 25, offset: 0, returned: 0, hasMore: false }, items: [] } });
-    expect(renderToStaticMarkup(await StewardOperationsPage({ searchParams: {} }))).toContain('No operational queue items');
+    expect(renderToStaticMarkup(await StewardOperationsPage({ searchParams: Promise.resolve({}) }))).toContain('No operational queue items');
     vi.mocked(getStewardOperationsQueue).mockResolvedValueOnce({ ok: true, queue: classifyStewardOperationsQueue({ requests: [request], matches: [match], reviews: [], introductions: [], auditEvents: [] }) });
-    const markup = renderToStaticMarkup(await StewardOperationsPage({ searchParams: {} }));
+    const markup = renderToStaticMarkup(await StewardOperationsPage({ searchParams: Promise.resolve({}) }));
     expect(markup).toContain('Requests awaiting match review');
     expect(markup).toContain('/steward/requests/request-1/matches');
   });
