@@ -4,6 +4,14 @@ import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { Card } from '@/components/ui';
 import { getEnv } from '@/lib/env';
 import { hashInviteToken, validateInviteForRedemption } from '@/lib/invites';
+import {
+  RateLimitExceededError,
+  assertRateLimitAllowed,
+  getRateLimiter,
+  hashScopedIdentifier,
+  rateLimitRules,
+  scopedRateLimitKey,
+} from '@/lib/security/rate-limit';
 import { createClient } from '@/lib/supabase/server';
 import type { SafeInviteValidationResult } from '@/lib/invites';
 import type { Database } from '@/types/supabase';
@@ -20,7 +28,7 @@ type InvitePageState =
   | SafeInviteValidationResult
   | {
       valid: false;
-      reason: 'missing' | 'unavailable' | 'unauthenticated';
+      reason: 'missing' | 'unavailable' | 'unauthenticated' | 'rate_limited';
     };
 
 type InviteStateCopyKey = Exclude<InvitePageState, { valid: true }>['reason'] | 'valid';
@@ -81,6 +89,12 @@ const inviteStateCopy: Record<
     guidance:
       'Sign in with the email address that received the invite, then reopen this link to continue.',
   },
+  rate_limited: {
+    eyebrow: 'Please wait',
+    title: 'We could not validate this invite',
+    body: 'We could not safely validate this invitation right now. No onboarding or community access changes were made.',
+    guidance: 'Please wait before trying this invite link again.',
+  },
   unavailable: {
     eyebrow: 'Validation unavailable',
     title: 'We could not validate this invite',
@@ -129,13 +143,26 @@ async function validateInviteToken(token: string | null): Promise<InvitePageStat
     return { valid: false, reason: 'missing' };
   }
 
+  const tokenHash = hashInviteToken(token);
+
+  try {
+    await assertRateLimitAllowed(
+      getRateLimiter(),
+      rateLimitRules.inviteValidation,
+      scopedRateLimitKey('invite-validation-page', hashScopedIdentifier('invite-token', tokenHash)),
+    );
+  } catch (error) {
+    if (error instanceof RateLimitExceededError) return { valid: false, reason: 'rate_limited' };
+    throw error;
+  }
+
   const supabase = createInviteLookupClient();
   const { data: invite, error } = await supabase
     .from('invitations')
     .select(
       'id, invitee_email, community_id, expires_at, redeemed_at, redemption_status, status, token_hash',
     )
-    .eq('token_hash', hashInviteToken(token))
+    .eq('token_hash', tokenHash)
     .maybeSingle();
 
   if (error) {
