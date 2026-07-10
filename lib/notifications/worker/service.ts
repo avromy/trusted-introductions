@@ -22,14 +22,10 @@ function readPayload(payload: unknown): { subject: string; textBody: string; htm
   };
 }
 
-function resolveEmailDestination(destinationRef: string): string {
-  if (destinationRef.includes('@')) return destinationRef;
-  throw new Error('Notification destination requires an email resolver before delivery.');
-}
-
 export async function runNotificationWorker(input: {
   repository: NotificationOutboxRepositoryClient;
   provider: NotificationDeliveryProvider;
+  resolveDestination: (destinationRef: string) => Promise<string>;
   batchSize?: number;
   now?: Date;
 }): Promise<NotificationWorkerResult> {
@@ -41,9 +37,10 @@ export async function runNotificationWorker(input: {
   for (const record of records) {
     try {
       const payload = readPayload(record.templatePayload);
+      const destination = await input.resolveDestination(record.destinationRef);
       const delivery = await deliverWithSafeLogging(input.provider, {
         channel: 'email',
-        to: resolveEmailDestination(record.destinationRef),
+        to: destination,
         ...payload,
         providerMetadata: { outboxId: record.id, category: record.category },
       });
@@ -66,8 +63,9 @@ export async function runNotificationWorker(input: {
         await markNotificationFailed(record.id, 'permanent', now, input.repository);
         result.failed += 1;
       }
-    } catch {
-      await markNotificationFailed(record.id, 'unknown', now, input.repository);
+    } catch (error) {
+      const permanent = error instanceof Error && /invalid|unavailable/.test(error.message);
+      await markNotificationFailed(record.id, permanent ? 'permanent' : 'unknown', now, input.repository);
       result.failed += 1;
     }
   }
