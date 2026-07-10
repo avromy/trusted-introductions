@@ -1,3 +1,4 @@
+import React from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { Badge, Card } from '@/components/ui';
@@ -43,7 +44,9 @@ export function OnboardingShell({
 
       <section className="grid flex-1 items-center gap-8 py-12 lg:grid-cols-[0.75fr_1.25fr]">
         <Card className="h-fit">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-trust">Onboarding flow</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-trust">
+            Onboarding flow
+          </p>
           <ol className="mt-6 space-y-3" aria-label="Onboarding placeholder steps">
             {steps.map((step, index) => {
               const isCurrent = step.href === currentHref;
@@ -76,14 +79,25 @@ export function OnboardingShell({
           <p className="mt-5 max-w-2xl text-lg leading-8 text-ink/70">{description}</p>
           <div className="mt-8">{children}</div>
           {(previousHref || nextHref) && (
-            <nav className="mt-10 flex flex-col gap-3 border-t border-black/5 pt-6 sm:flex-row sm:justify-between" aria-label="Placeholder onboarding navigation">
+            <nav
+              className="mt-10 flex flex-col gap-3 border-t border-black/5 pt-6 sm:flex-row sm:justify-between"
+              aria-label="Placeholder onboarding navigation"
+            >
               {previousHref && previousLabel ? (
-                <Link href={previousHref} className="inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-trust ring-1 ring-trust/15 hover:bg-sage/30">
+                <Link
+                  href={previousHref}
+                  className="inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-trust ring-1 ring-trust/15 hover:bg-sage/30"
+                >
                   ← {previousLabel}
                 </Link>
-              ) : <span />}
+              ) : (
+                <span />
+              )}
               {nextHref && nextLabel ? (
-                <Link href={nextHref} className="inline-flex items-center justify-center rounded-full bg-trust px-5 py-3 text-sm font-semibold text-white shadow-soft hover:bg-trust/90">
+                <Link
+                  href={nextHref}
+                  className="inline-flex items-center justify-center rounded-full bg-trust px-5 py-3 text-sm font-semibold text-white shadow-soft hover:bg-trust/90"
+                >
                   {nextLabel} →
                 </Link>
               ) : null}
