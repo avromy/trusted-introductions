@@ -1,13 +1,8 @@
+import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  esbuild: {
-    tsconfigRaw: {
-      compilerOptions: {
-        jsx: 'react-jsx',
-      },
-    },
-  } as never,
+  plugins: [react()],
   test: {
     environment: 'node',
     globals: true,
