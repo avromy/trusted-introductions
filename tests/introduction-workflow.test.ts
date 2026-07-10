@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createIntroductionFromStewardReviewAction, type CreateIntroductionActionClient } from '@/lib/introductions/actions';
-import { createIntroduction, mapIntroductionRow, type IntroductionRow } from '@/lib/introductions/repository';
+import {
+  createIntroductionFromStewardReviewAction,
+  type CreateIntroductionActionClient,
+} from '@/lib/introductions/actions';
+import {
+  createIntroduction,
+  mapIntroductionRow,
+  type IntroductionRow,
+} from '@/lib/introductions/repository';
 import type { JobSeekerRequestRow } from '@/lib/matching/job-seeker-repository';
 import type { StewardReviewRow } from '@/lib/matching/steward-review-repository';
 
@@ -61,7 +68,11 @@ function intro(overrides: Partial<IntroductionRow> = {}): IntroductionRow {
   };
 }
 
-function createClient(options: { steward: boolean; review?: StewardReviewRow }) {
+function createClient(options: {
+  steward: boolean;
+  role?: 'member' | 'steward' | 'admin';
+  review?: StewardReviewRow;
+}) {
   const inserts: unknown[] = [];
   const auditEvents: unknown[] = [];
   const introRow = intro();
@@ -70,29 +81,63 @@ function createClient(options: { steward: boolean; review?: StewardReviewRow }) 
     auth: { getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } }, error: null })) },
     from: vi.fn((table: string) => {
       if (table === 'trusted_identities') {
-        return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: vi.fn(async () => ({ data: { id: 'steward-1', status: 'active', user_id: 'user-1' }, error: null })) };
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn(async () => ({
+            data: { id: 'steward-1', status: 'active', user_id: 'user-1' },
+            error: null,
+          })),
+        };
       }
       if (table === 'user_roles') {
-        return { select: vi.fn().mockReturnThis(), eq: vi.fn(async () => ({ data: options.steward ? [{ role: 'steward', community_id: null }] : [{ role: 'member', community_id: null }], error: null })) };
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn(async () => ({
+            data: options.steward
+              ? [{ role: options.role ?? 'steward', community_id: null }]
+              : [{ role: 'member', community_id: null }],
+            error: null,
+          })),
+        };
       }
       if (table === 'steward_reviews') {
-        return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: vi.fn(async () => ({ data: options.review ?? review(), error: null })) };
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn(async () => ({ data: options.review ?? review(), error: null })),
+        };
       }
       if (table === 'job_seeker_requests') {
-        return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: vi.fn(async () => ({ data: request(), error: null })) };
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn(async () => ({ data: request(), error: null })),
+        };
       }
       if (table === 'introductions') {
         const builder = {
           select: vi.fn().mockReturnThis(),
-          insert: vi.fn((payload) => { inserts.push(payload); return builder; }),
+          insert: vi.fn((payload) => {
+            inserts.push(payload);
+            return builder;
+          }),
           eq: vi.fn().mockReturnThis(),
-          single: vi.fn(async () => ({ data: { ...introRow, ...(inserts.at(-1) as object | undefined) }, error: null })),
+          single: vi.fn(async () => ({
+            data: { ...introRow, ...(inserts.at(-1) as object | undefined) },
+            error: null,
+          })),
           maybeSingle: vi.fn(async () => ({ data: introRow, error: null })),
         };
         return builder;
       }
       if (table === 'audit_events') {
-        return { insert: vi.fn(async (payload) => { auditEvents.push(payload); return { error: null }; }) };
+        return {
+          insert: vi.fn(async (payload) => {
+            auditEvents.push(payload);
+            return { error: null };
+          }),
+        };
       }
       throw new Error(`Unexpected table ${table}`);
     }),
@@ -105,9 +150,31 @@ describe('introduction repository', () => {
   it('maps and persists introduction rows', async () => {
     const { client, inserts } = createClient({ steward: true });
 
-    expect(mapIntroductionRow(intro())).toMatchObject({ id: 'intro-1', requestId: 'request-1', helperIdentityId: 'helper-1' });
-    await expect(createIntroduction({ requestId: ' request-1 ', matchId: ' match-1 ', stewardReviewId: ' review-1 ', requesterIdentityId: ' requester-1 ', helperIdentityId: ' helper-1 ', createdByIdentityId: ' steward-1 ' }, client)).resolves.toMatchObject({ id: 'intro-1' });
-    expect(inserts[0]).toMatchObject({ request_id: 'request-1', match_id: 'match-1', requester_identity_id: 'requester-1', helper_identity_id: 'helper-1', status: 'draft' });
+    expect(mapIntroductionRow(intro())).toMatchObject({
+      id: 'intro-1',
+      requestId: 'request-1',
+      helperIdentityId: 'helper-1',
+    });
+    await expect(
+      createIntroduction(
+        {
+          requestId: ' request-1 ',
+          matchId: ' match-1 ',
+          stewardReviewId: ' review-1 ',
+          requesterIdentityId: ' requester-1 ',
+          helperIdentityId: ' helper-1 ',
+          createdByIdentityId: ' steward-1 ',
+        },
+        client,
+      ),
+    ).resolves.toMatchObject({ id: 'intro-1' });
+    expect(inserts[0]).toMatchObject({
+      request_id: 'request-1',
+      match_id: 'match-1',
+      requester_identity_id: 'requester-1',
+      helper_identity_id: 'helper-1',
+      status: 'draft',
+    });
   });
 });
 
@@ -115,23 +182,56 @@ describe('createIntroductionFromStewardReviewAction', () => {
   it('creates an introduction from an approved match', async () => {
     const { client, inserts } = createClient({ steward: true });
 
-    const result = await createIntroductionFromStewardReviewAction('review-1', { supabase: client, now: NOW });
+    const result = await createIntroductionFromStewardReviewAction('review-1', {
+      supabase: client,
+      now: NOW,
+    });
 
-    expect(result).toMatchObject({ ok: true, introduction: { requestId: 'request-1', matchId: 'match-1', requesterIdentityId: 'requester-1', helperIdentityId: 'helper-1' } });
-    expect(inserts[0]).toMatchObject({ request_id: 'request-1', match_id: 'match-1', steward_review_id: 'review-1', requester_identity_id: 'requester-1', helper_identity_id: 'helper-1' });
+    expect(result).toMatchObject({
+      ok: true,
+      introduction: {
+        requestId: 'request-1',
+        matchId: 'match-1',
+        requesterIdentityId: 'requester-1',
+        helperIdentityId: 'helper-1',
+      },
+    });
+    expect(inserts[0]).toMatchObject({
+      request_id: 'request-1',
+      match_id: 'match-1',
+      steward_review_id: 'review-1',
+      requester_identity_id: 'requester-1',
+      helper_identity_id: 'helper-1',
+    });
+  });
+
+  it('allows admins to create an introduction from an approved match', async () => {
+    const { client, inserts } = createClient({ steward: true, role: 'admin' });
+
+    await expect(
+      createIntroductionFromStewardReviewAction('review-1', { supabase: client, now: NOW }),
+    ).resolves.toMatchObject({ ok: true });
+    expect(inserts).toHaveLength(1);
   });
 
   it('fails when the steward match is rejected', async () => {
-    const { client, inserts } = createClient({ steward: true, review: review({ status: 'rejected' }) });
+    const { client, inserts } = createClient({
+      steward: true,
+      review: review({ status: 'rejected' }),
+    });
 
-    await expect(createIntroductionFromStewardReviewAction('review-1', { supabase: client, now: NOW })).resolves.toMatchObject({ ok: false, error: 'not_approved' });
+    await expect(
+      createIntroductionFromStewardReviewAction('review-1', { supabase: client, now: NOW }),
+    ).resolves.toMatchObject({ ok: false, error: 'not_approved' });
     expect(inserts).toHaveLength(0);
   });
 
   it('fails for unauthorized users', async () => {
     const { client, inserts, auditEvents } = createClient({ steward: false });
 
-    await expect(createIntroductionFromStewardReviewAction('review-1', { supabase: client, now: NOW })).resolves.toMatchObject({ ok: false, error: 'forbidden' });
+    await expect(
+      createIntroductionFromStewardReviewAction('review-1', { supabase: client, now: NOW }),
+    ).resolves.toMatchObject({ ok: false, error: 'forbidden' });
     expect(inserts).toHaveLength(0);
     expect(auditEvents).toHaveLength(0);
   });
@@ -141,7 +241,18 @@ describe('createIntroductionFromStewardReviewAction', () => {
 
     await createIntroductionFromStewardReviewAction('review-1', { supabase: client, now: NOW });
 
-    expect(auditEvents[0]).toMatchObject({ event_type: 'introduction.created', actor_id: 'steward-1', target_id: 'intro-1', metadata: { requestId: 'request-1', matchId: 'match-1', requesterIdentityId: 'requester-1', helperIdentityId: 'helper-1', status: 'draft' } });
+    expect(auditEvents[0]).toMatchObject({
+      event_type: 'introduction.created',
+      actor_id: 'steward-1',
+      target_id: 'intro-1',
+      metadata: {
+        requestId: 'request-1',
+        matchId: 'match-1',
+        requesterIdentityId: 'requester-1',
+        helperIdentityId: 'helper-1',
+        status: 'draft',
+      },
+    });
     expect(JSON.stringify(auditEvents[0])).not.toContain('message');
   });
 });
