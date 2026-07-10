@@ -33,7 +33,12 @@ function createFormData(overrides: Record<string, string | string[]> = {}): Form
 function createSupabaseMock(options: { insertError?: Error | null } = {}) {
   const insert = vi.fn(async () => ({ error: options.insertError ?? null }));
   const maybeSingleIdentity = vi.fn(async () => ({
-    data: { id: 'identity-steward', user_id: 'user-1', community_id: 'community-1', status: 'active' },
+    data: {
+      id: 'identity-steward',
+      user_id: 'user-1',
+      community_id: 'community-1',
+      status: 'active',
+    },
     error: null,
   }));
   const maybeSingleRole = vi.fn(async () => ({
@@ -44,11 +49,19 @@ function createSupabaseMock(options: { insertError?: Error | null } = {}) {
     auth: { getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } }, error: null })) },
     from: vi.fn((table: TableName) => {
       if (table === 'trusted_identities') {
-        return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: maybeSingleIdentity };
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: maybeSingleIdentity,
+        };
       }
 
       if (table === 'user_roles') {
-        return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: maybeSingleRole };
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: maybeSingleRole,
+        };
       }
 
       return { insert };
@@ -95,10 +108,20 @@ describe('introduction follow-up reminder helpers', () => {
     });
   });
 
-  it('requires at least one recipient and a future reminder time', () => {
+  it('validates recipients, due dates, and note length before scheduling', () => {
     expect(() => normalizeFollowUpReminderRecipients([' ', ''])).toThrow(
       'At least one reminder recipient is required.',
     );
+    expect(() =>
+      scheduleIntroductionFollowUpReminder({
+        introductionId: 'intro-123',
+        stewardIdentityId: 'steward-123',
+        remindAt: 'not-a-date',
+        recipientIdentityIds: ['helper-123'],
+        createdAt: NOW,
+      }),
+    ).toThrow('Reminder time must be a valid date.');
+
     expect(() =>
       scheduleIntroductionFollowUpReminder({
         introductionId: 'intro-123',
@@ -108,6 +131,17 @@ describe('introduction follow-up reminder helpers', () => {
         createdAt: NOW,
       }),
     ).toThrow('Reminder time must be in the future.');
+
+    expect(() =>
+      scheduleIntroductionFollowUpReminder({
+        introductionId: 'intro-123',
+        stewardIdentityId: 'steward-123',
+        remindAt: '2026-07-10T12:00:00.000Z',
+        recipientIdentityIds: ['helper-123'],
+        note: 'a'.repeat(501),
+        createdAt: NOW,
+      }),
+    ).toThrow('Reminder note must be 500 characters or fewer.');
   });
 });
 

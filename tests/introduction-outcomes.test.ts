@@ -37,7 +37,11 @@ function createActionClient(options: {
           eq: vi.fn().mockReturnThis(),
           maybeSingle: vi.fn(async () => ({
             data: options.identity
-              ? { id: options.identity.id, status: options.identity.status, user_id: options.user?.id ?? null }
+              ? {
+                  id: options.identity.id,
+                  status: options.identity.status,
+                  user_id: options.user?.id ?? null,
+                }
               : null,
             error: null,
           })),
@@ -154,36 +158,39 @@ describe('captureIntroductionOutcomeAction', () => {
     expect(auditEvents).toEqual([]);
   });
 
-  it('writes an audit event and returns the captured outcome', async () => {
-    const { client, auditEvents } = createActionClient({
-      user: { id: 'user-123' },
-      identity: { id: 'identity-123', status: 'active' },
-    });
+  it.each(INTRODUCTION_OUTCOME_VALUES)(
+    'writes an audit event and returns the %s outcome',
+    async (outcome) => {
+      const { client, auditEvents } = createActionClient({
+        user: { id: 'user-123' },
+        identity: { id: 'identity-123', status: 'active' },
+      });
 
-    const result = await captureIntroductionOutcomeAction(
-      'intro-123',
-      formData({ outcome: 'opportunity_created', note: '  Hiring loop started. ' }),
-      { supabase: client, now: NOW },
-    );
+      const result = await captureIntroductionOutcomeAction(
+        'intro-123',
+        formData({ outcome, note: '  Hiring loop started. ' }),
+        { supabase: client, now: NOW },
+      );
 
-    expect(result).toMatchObject({
-      ok: true,
-      outcome: {
-        introductionId: 'intro-123',
-        outcome: 'opportunity_created',
-        reporterIdentityId: 'identity-123',
-        note: 'Hiring loop started.',
-      },
-    });
-    expect(auditEvents).toEqual([
-      {
-        event_type: 'introduction_outcome.opportunity_created',
-        actor_identity_id: 'identity-123',
-        subject_table: 'introductions',
-        subject_id: 'intro-123',
-        occurred_at: '2026-07-08T12:00:00.000Z',
-        metadata: { outcome: 'opportunity_created', hasNote: true, noteLength: 20 },
-      },
-    ]);
-  });
+      expect(result).toMatchObject({
+        ok: true,
+        outcome: {
+          introductionId: 'intro-123',
+          outcome,
+          reporterIdentityId: 'identity-123',
+          note: 'Hiring loop started.',
+        },
+      });
+      expect(auditEvents).toEqual([
+        {
+          event_type: `introduction_outcome.${outcome}`,
+          actor_identity_id: 'identity-123',
+          subject_table: 'introductions',
+          subject_id: 'intro-123',
+          occurred_at: '2026-07-08T12:00:00.000Z',
+          metadata: { outcome, hasNote: true, noteLength: 20 },
+        },
+      ]);
+    },
+  );
 });
