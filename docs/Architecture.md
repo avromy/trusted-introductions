@@ -67,3 +67,9 @@ The M1 foundation selected the primary web stack and Supabase direction. Remaini
 - Queue/background job implementation.
 - Notification provider and reminder scheduling.
 - Feature flag provider and rollout mechanics.
+
+## Sensitive Data Serialization Rules
+
+Sensitive data must be treated as internal-only unless a server-side authorization check explicitly allows disclosure for the current viewer. Public shapes, action return values, audit metadata, and repository mapper output must not expose resume URLs or files, contact information, steward decision notes, helper private notes, outcome notes, or raw introduction message drafts. Safe payloads may include booleans and aggregate metadata such as `hasResume`, `hasNote`, `noteLength`, counts, statuses, and opaque IDs needed for workflow integrity.
+
+Audit event builders must persist only privacy-safe metadata. When a workflow needs accountability for a sensitive field, store a derived signal such as presence, length, domain, status, or timestamp rather than the raw value. Introduction repository contexts are sanitized before writes and reads so raw introduction messages cannot leak through generic context serialization.

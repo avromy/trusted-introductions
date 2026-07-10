@@ -10,6 +10,40 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Object.prototype.toString.call(value) === '[object Object]';
 }
 
+const SENSITIVE_AUDIT_METADATA_KEYS = new Set([
+  'contactInfo',
+  'contact_info',
+  'decisionReason',
+  'decision_reason',
+  'email',
+  'inviteeEmail',
+  'invitee_email',
+  'message',
+  'messageContent',
+  'message_content',
+  'note',
+  'notes',
+  'outcomeNote',
+  'outcome_note',
+  'privateNote',
+  'privateNotes',
+  'private_note',
+  'private_notes',
+  'rawIntroductionMessage',
+  'raw_introduction_message',
+  'resume',
+  'resumeUrl',
+  'resume_url',
+  'stewardNote',
+  'stewardNotes',
+  'steward_note',
+  'steward_notes',
+]);
+
+function isSensitiveAuditMetadataKey(key: string): boolean {
+  return SENSITIVE_AUDIT_METADATA_KEYS.has(key);
+}
+
 function normalizeAuditMetadataValue(value: unknown): Json | undefined {
   if (value === undefined || typeof value === 'function' || typeof value === 'symbol') {
     return undefined;
@@ -45,6 +79,10 @@ export function normalizeAuditMetadata(metadata?: Record<string, unknown> | null
   }
 
   return Object.entries(metadata).reduce<AuditMetadata>((normalized, [key, value]) => {
+    if (isSensitiveAuditMetadataKey(key)) {
+      return normalized;
+    }
+
     const normalizedValue = normalizeAuditMetadataValue(value);
 
     if (normalizedValue !== undefined) {

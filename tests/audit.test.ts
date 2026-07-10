@@ -49,3 +49,25 @@ describe('audit helpers', () => {
     });
   });
 });
+
+it('redacts sensitive metadata keys before audit persistence', () => {
+  const metadata = normalizeAuditMetadata({
+    inviteeEmail: 'invitee@example.com',
+    resumeUrl: 'https://example.com/private-resume.pdf',
+    privateNotes: 'do not log',
+    nested: {
+      outcomeNote: 'sensitive outcome context',
+      noteLength: 25,
+    },
+    status: 'created',
+  });
+
+  expect(metadata).toEqual({
+    nested: { noteLength: 25 },
+    status: 'created',
+  });
+  expect(JSON.stringify(metadata)).not.toContain('invitee@example.com');
+  expect(JSON.stringify(metadata)).not.toContain('private-resume');
+  expect(JSON.stringify(metadata)).not.toContain('do not log');
+  expect(JSON.stringify(metadata)).not.toContain('sensitive outcome context');
+});

@@ -145,3 +145,33 @@ describe('createIntroductionFromStewardReviewAction', () => {
     expect(JSON.stringify(auditEvents[0])).not.toContain('message');
   });
 });
+
+it('sanitizes raw introduction messages from repository contexts', async () => {
+  const { mapIntroductionRow } = await import('@/lib/introductions/repository');
+  const mapped = mapIntroductionRow({
+    id: 'intro-sensitive',
+    request_id: 'request-1',
+    match_id: 'match-1',
+    steward_review_id: 'review-1',
+    requester_identity_id: 'requester-1',
+    helper_identity_id: 'helper-1',
+    created_by_identity_id: 'steward-1',
+    status: 'draft',
+    context: {
+      source: 'steward_review',
+      messageContentStored: false,
+      rawIntroductionMessage: 'raw private introduction',
+      nested: { messageContent: 'private nested draft' },
+    },
+    created_at: '2026-07-07T12:00:00.000Z',
+    updated_at: '2026-07-07T12:00:00.000Z',
+  });
+
+  expect(mapped.context).toEqual({
+    source: 'steward_review',
+    messageContentStored: false,
+    nested: {},
+  });
+  expect(JSON.stringify(mapped)).not.toContain('raw private introduction');
+  expect(JSON.stringify(mapped)).not.toContain('private nested draft');
+});

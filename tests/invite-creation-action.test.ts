@@ -106,7 +106,6 @@ describe('createInviteAction', () => {
         target_id: 'invite-456',
         metadata: {
           communityId: 'community-123',
-          inviteeEmail: 'invitee@example.com',
           expiresAt: '2026-07-14T12:00:00.000Z',
         },
         occurred_at: '2026-07-07T12:00:00.000Z',
