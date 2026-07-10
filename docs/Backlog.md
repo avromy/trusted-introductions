@@ -9,7 +9,7 @@ MVP core is complete: M1 foundation, M2 invite-only onboarding, M3 matching foun
 - Expand RLS policies and authorization coverage for identity, invite, profile, privacy, seeker request, helper capability, match, review, introduction, follow-up, and outcome access.
 - Add operational notifications for invite delivery, introduction coordination, follow-up reminders, and outcome prompts.
 - Add observability: structured logs, audit review dashboards, health checks, error tracking, and steward-facing operational reports.
-- Add deployment hardening: environment validation in CI/CD, migration runbooks, backup/restore drills, and release rollback guidance.
+- Add deployment hardening: environment validation in CI/CD, migration runbooks, backup/restore drills, and release rollback guidance. See [Deployment](Deployment.md) for the production deployment runbook.
 - Add privacy/security review tasks for sensitive profile, resume, contact, review, introduction, and outcome data.
 
 ## Completed
