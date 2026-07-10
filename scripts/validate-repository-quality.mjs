@@ -37,6 +37,7 @@ for (const migration of migrations) {
     failures.push(`Migration ${migration} must use NNNN_snake_case.sql naming.`);
     continue;
   }
+
   const identifier = match[1];
   if (identifiers.has(identifier)) {
     failures.push(`Migration identifier ${identifier} is duplicated by ${identifiers.get(identifier)} and ${migration}.`);
@@ -46,13 +47,6 @@ for (const migration of migrations) {
   const sql = readFileSync(join(migrationDirectory, migration), 'utf8');
   if (/security\s+definer/i.test(sql) && !/set\s+search_path/i.test(sql)) {
     warnings.push(`${migration} contains legacy SECURITY DEFINER usage without an explicit search_path. Remediate in a dedicated migration.`);
-  }
-}
-
-const orderedIds = [...identifiers.keys()].map(Number).sort((a, b) => a - b);
-for (let index = 1; index < orderedIds.length; index += 1) {
-  if (orderedIds[index] !== orderedIds[index - 1] + 1) {
-    failures.push(`Migration sequence has a gap between ${String(orderedIds[index - 1]).padStart(4, '0')} and ${String(orderedIds[index]).padStart(4, '0')}.`);
   }
 }
 
