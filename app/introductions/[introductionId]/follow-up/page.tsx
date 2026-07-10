@@ -2,7 +2,7 @@ import { Button, Card, Input } from '@/components/ui';
 import { scheduleIntroductionFollowUpReminderAction } from '@/lib/introductions/follow-up-reminder-actions';
 
 interface IntroductionFollowUpPageProps {
-  params: { introductionId: string };
+  params: Promise<{ introductionId: string }>;
 }
 
 const REMINDER_STATUS_STEPS = [
@@ -11,10 +11,12 @@ const REMINDER_STATUS_STEPS = [
   { label: 'Ready to close', description: 'Use the outcome page once the introduction has a result.' },
 ];
 
-export default function IntroductionFollowUpPage({ params }: IntroductionFollowUpPageProps) {
+export default async function IntroductionFollowUpPage({ params }: IntroductionFollowUpPageProps) {
+  const { introductionId } = await params;
+
   async function scheduleReminder(formData: FormData) {
     'use server';
-    await scheduleIntroductionFollowUpReminderAction(params.introductionId, formData);
+    await scheduleIntroductionFollowUpReminderAction(introductionId, formData);
   }
 
   return (
