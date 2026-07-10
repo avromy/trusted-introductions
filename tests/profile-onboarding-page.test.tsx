@@ -18,9 +18,16 @@ vi.mock('@/app/onboarding/_components/onboarding-shell', () => ({
 
 import ProfileOnboardingPage from '@/app/onboarding/profile/page';
 
+async function renderProfilePage(searchParams?: { error?: string; saved?: string }) {
+  const page = await ProfileOnboardingPage({
+    searchParams: searchParams ? Promise.resolve(searchParams) : undefined,
+  });
+  return renderToStaticMarkup(page);
+}
+
 describe('ProfileOnboardingPage', () => {
-  it('renders production-ready labels, helper text, and completion guidance', () => {
-    const markup = renderToStaticMarkup(<ProfileOnboardingPage />);
+  it('renders production-ready labels, helper text, and completion guidance', async () => {
+    const markup = await renderProfilePage();
 
     expect(markup).toContain('Display name');
     expect(markup).toContain('Use the name members should recognize');
@@ -31,15 +38,11 @@ describe('ProfileOnboardingPage', () => {
     expect(markup).toContain('We save only the supported profile fields shown here.');
   });
 
-  it('renders invalid submission errors and successful submission guidance', () => {
-    const errorMarkup = renderToStaticMarkup(
-      <ProfileOnboardingPage
-        searchParams={{ error: 'Display name must be at least 2 characters.' }}
-      />,
-    );
-    const savedMarkup = renderToStaticMarkup(
-      <ProfileOnboardingPage searchParams={{ saved: '1' }} />,
-    );
+  it('renders invalid submission errors and successful submission guidance', async () => {
+    const errorMarkup = await renderProfilePage({
+      error: 'Display name must be at least 2 characters.',
+    });
+    const savedMarkup = await renderProfilePage({ saved: '1' });
 
     expect(errorMarkup).toContain('We could not save your profile.');
     expect(errorMarkup).toContain('Display name must be at least 2 characters.');
