@@ -204,6 +204,28 @@ describe('createJobSeekerRequestAction', () => {
     expect(auditEvents).toEqual([]);
   });
 
+  it('ignores caller-supplied owner identities when creating requests', async () => {
+    const { client, insertedRequests, auditEvents } = createActionClient({
+      user: { id: 'user-123', email: 'person@example.com' },
+      identity: { id: 'identity-123', status: 'active' },
+    });
+
+    await expect(
+      createJobSeekerRequestAction(
+        {
+          headline: 'Product leader seeking intros',
+          targetRole: 'Product Lead',
+          identityId: 'identity-other',
+        } as never,
+        { supabase: client, now: NOW },
+      ),
+    ).resolves.toMatchObject({ ok: true });
+
+    expect(insertedRequests[0]).toMatchObject({ identity_id: 'identity-123' });
+    expect(JSON.stringify(insertedRequests)).not.toContain('identity-other');
+    expect(auditEvents[0]).toMatchObject({ actor_id: 'identity-123' });
+  });
+
   it('persists owner identity, writes audit, and returns privacy-safe data', async () => {
     const { client, insertedRequests, auditEvents } = createActionClient({
       user: { id: 'user-123', email: 'person@example.com' },
