@@ -1,3 +1,4 @@
+import { resolveNotificationDestination, type NotificationDestinationClient } from '@/lib/notifications/destinations';
 import { createNotificationDeliveryProvider } from '@/lib/notifications/providers';
 import { runNotificationWorker } from '@/lib/notifications/worker';
 import { createClient } from '@/lib/supabase/server';
@@ -32,9 +33,12 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   if (!authorized(request)) return Response.json({ error: 'not_found' }, { status: 404 });
+  const supabase = createClient();
   const result = await runNotificationWorker({
-    repository: createClient() as unknown as NotificationOutboxRepositoryClient,
+    repository: supabase as unknown as NotificationOutboxRepositoryClient,
     provider: createNotificationDeliveryProvider(),
+    resolveDestination: (destinationRef) =>
+      resolveNotificationDestination(destinationRef, supabase as unknown as NotificationDestinationClient),
   });
   return Response.json(result, { status: 200, headers: { 'Cache-Control': 'no-store' } });
 }

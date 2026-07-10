@@ -22,14 +22,15 @@ function readPayload(payload: unknown): { subject: string; textBody: string; htm
   };
 }
 
-function resolveEmailDestination(destinationRef: string): string {
-  if (destinationRef.includes('@')) return destinationRef;
-  throw new Error('Notification destination requires an email resolver before delivery.');
+async function defaultDestinationResolver(destinationRef: string): Promise<string> {
+  if (destinationRef.includes('@')) return destinationRef.trim().toLowerCase();
+  throw new Error('notification_destination_unavailable');
 }
 
 export async function runNotificationWorker(input: {
   repository: NotificationOutboxRepositoryClient;
   provider: NotificationDeliveryProvider;
+  resolveDestination?: (destinationRef: string) => Promise<string>;
   batchSize?: number;
   now?: Date;
 }): Promise<NotificationWorkerResult> {
@@ -37,13 +38,15 @@ export async function runNotificationWorker(input: {
   const now = input.now ?? new Date();
   const records = await claimPendingNotifications(batchSize, now, input.repository);
   const result: NotificationWorkerResult = { claimed: records.length, sent: 0, retried: 0, failed: 0 };
+  const resolveDestination = input.resolveDestination ?? defaultDestinationResolver;
 
   for (const record of records) {
     try {
       const payload = readPayload(record.templatePayload);
+      const destination = await resolveDestination(record.destinationRef);
       const delivery = await deliverWithSafeLogging(input.provider, {
         channel: 'email',
-        to: resolveEmailDestination(record.destinationRef),
+        to: destination,
         ...payload,
         providerMetadata: { outboxId: record.id, category: record.category },
       });
@@ -66,8 +69,9 @@ export async function runNotificationWorker(input: {
         await markNotificationFailed(record.id, 'permanent', now, input.repository);
         result.failed += 1;
       }
-    } catch {
-      await markNotificationFailed(record.id, 'unknown', now, input.repository);
+    } catch (error) {
+      const permanent = error instanceof Error && /invalid|unavailable/.test(error.message);
+      await markNotificationFailed(record.id, permanent ? 'permanent' : 'unknown', now, input.repository);
       result.failed += 1;
     }
   }
