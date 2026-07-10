@@ -23,6 +23,20 @@ jobs:
       - name: Install deterministic dependencies
         run: npm ci
       - name: Block high and critical dependency vulnerabilities
-        run: npm audit --audit-level=high
+        id: dependency_audit
+        run: |
+          set +e
+          npm audit --audit-level=high --json > npm-audit.json
+          status=$?
+          node -e "const report=require('./npm-audit.json'); console.log(JSON.stringify(report.metadata?.vulnerabilities ?? {}, null, 2))"
+          exit $status
+      - name: Upload dependency audit diagnostics
+        if: failure() && steps.dependency_audit.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit-diagnostics
+          path: npm-audit.json
+          if-no-files-found: error
+          retention-days: 7
       - name: Block denied dependency licenses
         run: npm run validate:licenses
