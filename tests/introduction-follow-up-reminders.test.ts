@@ -12,7 +12,12 @@ import {
 
 const NOW = new Date('2026-07-08T12:00:00.000Z');
 
-type TableName = 'trusted_identities' | 'user_roles' | 'introductions' | 'audit_events';
+type TableName =
+  | 'trusted_identities'
+  | 'user_roles'
+  | 'introductions'
+  | 'introduction_follow_ups'
+  | 'audit_events';
 
 function createFormData(overrides: Record<string, string | string[]> = {}): FormData {
   const formData = new FormData();
@@ -43,7 +48,22 @@ function createSupabaseMock(
     insertError?: Error | null;
   } = {},
 ) {
-  const insert = vi.fn(async () => ({ error: options.insertError ?? null }));
+  const auditInsert = vi.fn(async () => ({ error: options.insertError ?? null }));
+  const followUpRows: unknown[] = [];
+  const followUpInsert = vi.fn((payload: unknown) => {
+    followUpRows.push(payload);
+    const row = {
+      id: 'follow-up-1',
+      ...(payload as Record<string, unknown>),
+      completed_at: null,
+      updated_at: NOW.toISOString(),
+    };
+    const builder = {
+      select: vi.fn(() => builder),
+      single: vi.fn(async () => ({ data: row, error: options.insertError ?? null })),
+    };
+    return builder;
+  });
   const maybeSingleIdentity = vi.fn(async () => ({
     data: {
       id: options.identityId ?? 'identity-steward',
@@ -105,11 +125,20 @@ function createSupabaseMock(
         };
       }
 
-      return { insert };
+      if (table === 'introduction_follow_ups') {
+        return { insert: followUpInsert };
+      }
+
+      return { insert: auditInsert };
     }),
   };
 
-  return { supabase: supabase as unknown as IntroductionFollowUpReminderActionClient, insert };
+  return {
+    supabase: supabase as unknown as IntroductionFollowUpReminderActionClient,
+    auditInsert,
+    followUpInsert,
+    followUpRows,
+  };
 }
 
 describe('introduction follow-up reminder helpers', () => {
@@ -194,8 +223,8 @@ describe('introduction follow-up reminder helpers', () => {
 });
 
 describe('scheduleIntroductionFollowUpReminderAction', () => {
-  it('persists the scheduled reminder audit event for a steward', async () => {
-    const { supabase, insert } = createSupabaseMock();
+  it('persists the reminder before writing its privacy-safe audit event', async () => {
+    const { supabase, auditInsert, followUpInsert, followUpRows } = createSupabaseMock();
 
     const result = await scheduleIntroductionFollowUpReminderAction('intro-123', createFormData(), {
       supabase,
@@ -211,7 +240,15 @@ describe('scheduleIntroductionFollowUpReminderAction', () => {
         status: 'scheduled',
       }),
     });
-    expect(insert).toHaveBeenCalledWith(
+    expect(followUpInsert).toHaveBeenCalledTimes(1);
+    expect(followUpRows).toEqual([
+      expect.objectContaining({
+        introduction_id: 'intro-123',
+        created_by_identity_id: 'identity-steward',
+        status: 'scheduled',
+      }),
+    ]);
+    expect(auditInsert).toHaveBeenCalledWith(
       expect.objectContaining({
         event_type: 'introduction_follow_up_reminder.scheduled',
         actor_identity_id: 'identity-steward',
@@ -222,7 +259,7 @@ describe('scheduleIntroductionFollowUpReminderAction', () => {
   });
 
   it('allows participants to schedule a follow-up reminder', async () => {
-    const { supabase, insert } = createSupabaseMock({
+    const { supabase, auditInsert, followUpInsert } = createSupabaseMock({
       identityId: 'identity-helper',
       roles: [{ role: 'member', community_id: null }],
     });
@@ -233,11 +270,12 @@ describe('scheduleIntroductionFollowUpReminderAction', () => {
         now: NOW,
       }),
     ).resolves.toMatchObject({ ok: true });
-    expect(insert).toHaveBeenCalledTimes(1);
+    expect(followUpInsert).toHaveBeenCalledTimes(1);
+    expect(auditInsert).toHaveBeenCalledTimes(1);
   });
 
   it('blocks non-participants from scheduling a follow-up reminder', async () => {
-    const { supabase, insert } = createSupabaseMock({
+    const { supabase, auditInsert, followUpInsert } = createSupabaseMock({
       identityId: 'identity-outsider',
       roles: [{ role: 'member', community_id: null }],
     });
@@ -248,11 +286,12 @@ describe('scheduleIntroductionFollowUpReminderAction', () => {
         now: NOW,
       }),
     ).resolves.toMatchObject({ ok: false, error: 'forbidden' });
-    expect(insert).not.toHaveBeenCalled();
+    expect(followUpInsert).not.toHaveBeenCalled();
+    expect(auditInsert).not.toHaveBeenCalled();
   });
 
   it('returns validation errors for invalid submitted reminders', async () => {
-    const { supabase } = createSupabaseMock();
+    const { supabase, followUpInsert } = createSupabaseMock();
 
     const result = await scheduleIntroductionFollowUpReminderAction(
       'intro-123',
@@ -265,5 +304,6 @@ describe('scheduleIntroductionFollowUpReminderAction', () => {
       error: 'validation',
       message: 'Reminder time must be in the future.',
     });
+    expect(followUpInsert).not.toHaveBeenCalled();
   });
 });
