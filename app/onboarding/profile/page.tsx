@@ -5,17 +5,20 @@ import { OnboardingShell } from '../_components/onboarding-shell';
 import { onboardingSteps } from '../steps';
 import { submitOnboardingProfile } from './actions';
 
-type ProfileOnboardingPageProps = {
-  searchParams?: {
-    error?: string;
-    saved?: string;
-  };
+type ProfileSearchParams = {
+  error?: string;
+  saved?: string;
 };
 
-export default function ProfileOnboardingPage({ searchParams }: ProfileOnboardingPageProps) {
-  const errorMessage = searchParams?.error;
+type ProfileOnboardingPageProps = {
+  searchParams?: Promise<ProfileSearchParams>;
+};
+
+export default async function ProfileOnboardingPage({ searchParams }: ProfileOnboardingPageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const errorMessage = resolvedSearchParams?.error;
   const successMessage =
-    searchParams?.saved === '1'
+    resolvedSearchParams?.saved === '1'
       ? 'Profile saved. Review the completion guidance below, then continue to privacy settings.'
       : null;
 
