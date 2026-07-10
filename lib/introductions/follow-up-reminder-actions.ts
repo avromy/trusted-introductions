@@ -6,10 +6,14 @@ import {
   toSafeAuthFailureResult,
 } from '@/lib/auth/steward';
 import {
+  createFollowUpReminder,
+  type FollowUpRepositoryClient,
+} from '@/lib/introductions/follow-up-repository';
+import { scheduleIntroductionFollowUpReminder } from '@/lib/introductions/follow-up-reminders';
+import {
   getIntroductionById,
   type IntroductionRepositoryClient,
 } from '@/lib/introductions/repository';
-import { scheduleIntroductionFollowUpReminder } from '@/lib/introductions/follow-up-reminders';
 import { createClient } from '@/lib/supabase/server';
 
 export type IntroductionFollowUpReminderActionResult =
@@ -17,14 +21,22 @@ export type IntroductionFollowUpReminderActionResult =
   | { ok: false; error: 'validation' | 'not_found'; message: string }
   | { ok: false; error: 'auth_required' | 'forbidden'; message: string };
 
+type AuditEventInsert = {
+  actor_identity_id: string;
+  event_type: string;
+  subject_table: string;
+  subject_id: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
 export type IntroductionFollowUpReminderActionClient = Parameters<
   typeof requireCurrentTrustedIdentity
 >[0] &
-  IntroductionRepositoryClient & {
+  IntroductionRepositoryClient &
+  FollowUpRepositoryClient & {
     from(table: 'audit_events'): {
-      insert(
-        payload: ReturnType<typeof scheduleIntroductionFollowUpReminder>['event'],
-      ): Promise<{ error: Error | null }>;
+      insert(payload: AuditEventInsert): Promise<{ error: Error | null }>;
     };
   };
 
@@ -34,7 +46,8 @@ function formValue(formData: FormData, key: string): string {
 }
 
 function formValues(formData: FormData, key: string): string[] {
-  return formData.getAll(key).filter((value): value is string => typeof value === 'string');
+  const directValues = formData.getAll(key).filter((value): value is string => typeof value === 'string');
+  return directValues.flatMap((value) => value.split(',')).map((value) => value.trim()).filter(Boolean);
 }
 
 function getServerActionClient(): IntroductionFollowUpReminderActionClient {
@@ -91,11 +104,15 @@ export async function scheduleIntroductionFollowUpReminderAction(
       createdAt: options.now,
     });
 
-    const { error } = await supabase.from('audit_events').insert(result.event);
+    await createFollowUpReminder(result.reminder, supabase);
 
-    if (error) {
-      throw error;
-    }
+    const { occurred_at: createdAt, ...event } = result.event;
+    const { error } = await supabase.from('audit_events').insert({
+      ...event,
+      created_at: createdAt,
+    });
+
+    if (error) throw error;
 
     return { ok: true, reminder: result.reminder };
   } catch (error) {
