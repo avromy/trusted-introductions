@@ -15,7 +15,8 @@
     "e2e:ui": "playwright test --ui",
     "e2e:headed": "playwright test --headed",
     "validate:env": "node scripts/validate-env.mjs",
-    "validate:repo": "node scripts/validate-repository-quality.mjs"
+    "validate:repo": "node scripts/validate-repository-quality.mjs",
+    "validate:licenses": "node scripts/validate-dependency-licenses.mjs"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.0",
