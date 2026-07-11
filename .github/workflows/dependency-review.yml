@@ -1,0 +1,42 @@
+name: Dependency Review
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install deterministic dependencies
+        run: npm ci
+      - name: Block high and critical dependency vulnerabilities
+        id: dependency_audit
+        run: |
+          set +e
+          npm audit --audit-level=high --json > npm-audit.json
+          status=$?
+          node -e "const report=require('./npm-audit.json'); console.log(JSON.stringify(report.metadata?.vulnerabilities ?? {}, null, 2))"
+          exit $status
+      - name: Upload dependency audit diagnostics
+        if: failure() && steps.dependency_audit.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit-diagnostics
+          path: npm-audit.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Block denied dependency licenses
+        run: npm run validate:licenses

@@ -19,12 +19,14 @@ export function createClient() {
     env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
-        getAll() {
-          return cookieStore.getAll().map(({ name, value }) => ({ name, value }));
+        async getAll() {
+          const store = await cookieStore;
+          return store.getAll().map(({ name, value }: { name: string; value: string }) => ({ name, value }));
         },
-        setAll(cookiesToSet: SupabaseCookie[]) {
+        async setAll(cookiesToSet: SupabaseCookie[]) {
+          const store = await cookieStore;
           cookiesToSet.forEach(({ name, value, options }: SupabaseCookie) => {
-            cookieStore.set({
+            store.set({
               name,
               value,
               ...(options ?? {}),

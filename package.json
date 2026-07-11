@@ -15,12 +15,13 @@
     "e2e:ui": "playwright test --ui",
     "e2e:headed": "playwright test --headed",
     "validate:env": "node scripts/validate-env.mjs",
-    "validate:repo": "node scripts/validate-repository-quality.mjs"
+    "validate:repo": "node scripts/validate-repository-quality.mjs",
+    "validate:licenses": "node scripts/validate-dependency-licenses.mjs"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
-    "next": "^14.2.16",
+    "next": "15.5.20",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwind-merge": "^2.5.4",
@@ -29,21 +30,22 @@
     "@supabase/supabase-js": "^2.45.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@types/cookie": "^0.6.0",
     "@types/node": "^20.17.6",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.1",
-    "eslint-config-next": "^14.2.16",
+    "eslint-config-next": "15.5.20",
     "eslint-config-prettier": "^9.1.0",
     "postcss": "^8.4.49",
     "prettier": "^3.3.3",
     "tailwindcss": "^3.4.15",
     "typescript": "^5.6.3",
-    "vitest": "^2.1.5",
-    "@playwright/test": "^1.54.0"
+    "vitest": "^4.1.10"
   },
   "engines": {
     "node": ">=20.0.0"

@@ -1,7 +1,8 @@
 import { Card } from '@/components/ui';
 
-export default function UnsubscribePage({ params }: { params: { token: string } }) {
-  const hasToken = Boolean(params.token?.trim());
+export default async function UnsubscribePage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params;
+  const hasToken = Boolean(token?.trim());
   return (
     <main className="mx-auto min-h-screen max-w-2xl px-6 py-16">
       <Card>
